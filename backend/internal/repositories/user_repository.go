@@ -260,3 +260,41 @@ func (r *UserRepository) UpdateRole(userID uuid.UUID, role string) error {
 	}
 	return nil
 }
+
+// CountUsers returns the total number of users
+func (r *UserRepository) CountUsers() (int, error) {
+	query := `SELECT COUNT(*) FROM users`
+	var count int
+	err := r.db.QueryRow(query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count users: %w", err)
+	}
+	return count, nil
+}
+
+// CountActiveUsers returns the number of active users (users with files in last N days)
+func (r *UserRepository) CountActiveUsers(days int) (int, error) {
+	query := `SELECT COUNT(DISTINCT u.id) FROM users u INNER JOIN files f ON u.id = f.uploader_id WHERE f.created_at >= NOW() - INTERVAL '%d days'`
+	var count int
+	err := r.db.QueryRow(fmt.Sprintf(query, days)).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count active users: %w", err)
+	}
+	return count, nil
+}
+
+// CountNewUsersToday returns the number of users created today
+func (r *UserRepository) CountNewUsersToday() (int, error) {
+	query := `SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURRENT_DATE`
+	var count int
+	err := r.db.QueryRow(query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count new users today: %w", err)
+	}
+	return count, nil
+}
+
+// GetDB returns the database connection
+func (r *UserRepository) GetDB() *sql.DB {
+	return r.db
+}

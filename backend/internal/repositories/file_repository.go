@@ -89,6 +89,11 @@ func (r *FileRepository) GetByID(id uuid.UUID) (*models.File, error) {
 	return file, nil
 }
 
+// GetFilesByUserID retrieves files by user ID with pagination (alias for GetByUserID)
+func (r *FileRepository) GetFilesByUserID(userID uuid.UUID, limit, offset int) ([]*models.File, error) {
+	return r.GetByUserID(userID, limit, offset)
+}
+
 // GetByUserID retrieves files for a specific user
 func (r *FileRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.File, error) {
 	query := `

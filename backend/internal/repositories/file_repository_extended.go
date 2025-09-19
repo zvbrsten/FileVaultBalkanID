@@ -242,16 +242,6 @@ func (r *FileRepository) CountUniqueFiles() (int, error) {
 	return count, nil
 }
 
-// GetTotalStorage returns total storage used
-func (r *FileRepository) GetTotalStorage() (int64, error) {
-	query := `SELECT COALESCE(SUM(size), 0) FROM files`
-	var total int64
-	err := r.db.QueryRow(query).Scan(&total)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get total storage: %w", err)
-	}
-	return total, nil
-}
 
 // GetUniqueStorage returns storage used by unique files only
 func (r *FileRepository) GetUniqueStorage() (int64, error) {

@@ -1,0 +1,5 @@
+[33m072fb0b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m feat: add database connection and file model
+[33md0fe6f0[m feat: initialize Go backend with basic project structure
+[33m0f0c8ca[m docs: add system architecture diagram showing component interactions and data flow patterns
+[33m1159543[m docs: add comprehensive system architecture documentation with component interactions and data flow patterns
+[33m33170a1[m feat: initialize FileVault project structure with Docker Compose setup
