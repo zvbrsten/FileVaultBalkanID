@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@types/apollo-upload-client": "^18.0.0",
+    "apollo-upload-client": "^19.0.0"
+  }
+}
