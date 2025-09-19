@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Trash2, File, FileText, Image, Video, Music, Archive, Calendar, Hash } from 'lucide-react';
-import { useQuery } from '@apollo/client';
-import { FILES_QUERY } from '../../api/queries';
+import { useQuery, useMutation } from '@apollo/client';
+import { FILES_QUERY, DELETE_FILE } from '../../api/queries';
 import ShareButton from '../FileShare/ShareButton';
 
 interface FileItem {
@@ -26,6 +26,8 @@ const FileList: React.FC<FileListProps> = ({ onFileSelect }) => {
     errorPolicy: 'all',
   });
 
+  const [deleteFileMutation] = useMutation(DELETE_FILE);
+
   const files = data?.files || [];
 
   const deleteFile = async (fileId: string) => {
@@ -34,20 +36,12 @@ const FileList: React.FC<FileListProps> = ({ onFileSelect }) => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/files/${fileId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      await deleteFileMutation({
+        variables: { id: fileId },
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete file: ${response.status}`);
-      }
-
-      // Remove file from local state
-      setFiles(prev => prev.filter(file => file.id !== fileId));
+      
+      // Refetch the files list to update the UI
+      await refetch();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete file');
     }
@@ -154,7 +148,7 @@ const FileList: React.FC<FileListProps> = ({ onFileSelect }) => {
           Your Files ({files.length})
         </h2>
         <button
-          onClick={fetchFiles}
+          onClick={() => refetch()}
           className="text-blue-600 hover:text-blue-800 text-sm"
         >
           Refresh
@@ -184,7 +178,7 @@ const FileList: React.FC<FileListProps> = ({ onFileSelect }) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {files.map((file) => (
+              {files.map((file: FileItem) => (
                 <tr key={file.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
