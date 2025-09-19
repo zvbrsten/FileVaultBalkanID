@@ -97,6 +97,20 @@ export const DELETE_FILE = gql`
   }
 `;
 
+export const GET_QUOTA = gql`
+  query GetQuota {
+    fileStats {
+      totalFiles
+      uniqueFiles
+      totalSize
+      filesByMimeType {
+        mimeType
+        count
+      }
+    }
+  }
+`;
+
 
 
 

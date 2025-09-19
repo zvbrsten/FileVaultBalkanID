@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Trash2, File, FileText, Image, Video, Music, Archive, Calendar, Hash } from 'lucide-react';
+import { useQuery } from '@apollo/client';
+import { FILES_QUERY } from '../../api/queries';
 import ShareButton from '../FileShare/ShareButton';
 
 interface FileItem {
@@ -19,40 +21,12 @@ interface FileListProps {
 }
 
 const FileList: React.FC<FileListProps> = ({ onFileSelect }) => {
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error, refetch } = useQuery(FILES_QUERY, {
+    variables: { limit: 100, offset: 0 },
+    errorPolicy: 'all',
+  });
 
-  const fetchFiles = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('Please log in first');
-        return;
-      }
-
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/files`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch files: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setFiles(data.files || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch files');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchFiles();
-  }, []);
+  const files = data?.files || [];
 
   const deleteFile = async (fileId: string) => {
     if (!window.confirm('Are you sure you want to delete this file?')) {
@@ -152,9 +126,9 @@ const FileList: React.FC<FileListProps> = ({ onFileSelect }) => {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <div className="text-red-700">{error}</div>
+        <div className="text-red-700">{error.message}</div>
         <button
-          onClick={fetchFiles}
+          onClick={() => refetch()}
           className="mt-2 text-red-600 hover:text-red-800 underline"
         >
           Try again

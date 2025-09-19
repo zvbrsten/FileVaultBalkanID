@@ -242,7 +242,6 @@ func (r *FileRepository) CountUniqueFiles() (int, error) {
 	return count, nil
 }
 
-
 // GetUniqueStorage returns storage used by unique files only
 func (r *FileRepository) GetUniqueStorage() (int64, error) {
 	query := `
@@ -393,5 +392,3 @@ func (r *FileRepository) GetFilesByUserIDAndDateRange(userID uuid.UUID, startDat
 
 	return files, nil
 }
-
-
