@@ -1,0 +1,165 @@
+# GraphQL schema for FileVault
+
+type User {
+  id: ID!
+  email: String!
+  username: String!
+  role: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type File {
+  id: ID!
+  filename: String!
+  originalName: String!
+  mimeType: String!
+  size: Int!
+  hash: String!
+  isDuplicate: Boolean!
+  uploaderId: ID!
+  uploader: User
+  createdAt: String!
+  updatedAt: String!
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+
+
+type Query {
+  me: User
+  files(limit: Int = 10, offset: Int = 0): [File!]!
+  file(id: ID!): File
+  searchFiles(searchTerm: String!, limit: Int = 10, offset: Int = 0): [File!]!
+  advancedSearch(
+    searchTerm: String
+    mimeTypes: [String!]
+    minSize: Int
+    maxSize: Int
+    dateFrom: String
+    dateTo: String
+    isDuplicate: Boolean
+    sortBy: String
+    sortOrder: String
+    limit: Int = 10
+    offset: Int = 0
+  ): SearchResult!
+  fileStats: FileStats!
+  mimeTypeCategories: MimeTypeCategories!
+  
+  
+  # File sharing queries
+  myFileShares(limit: Int = 20, offset: Int = 0): [FileShare!]!
+  fileShareStats(shareId: ID!): FileShareStats!
+  
+  # Admin queries
+  adminStats: AdminStats!
+  adminUsers(limit: Int = 20, offset: Int = 0): [UserStats!]!
+  adminUserDetails(userId: ID!): UserStats!
+  adminSystemHealth: SystemHealth!
+}
+
+type SearchResult {
+  files: [File!]!
+  totalCount: Int!
+  hasMore: Boolean!
+}
+
+type FileStats {
+  totalFiles: Int!
+  uniqueFiles: Int!
+  totalSize: Int!
+  filesByMimeType: [MimeTypeCount!]!
+}
+
+type MimeTypeCount {
+  mimeType: String!
+  count: Int!
+}
+
+type MimeTypeCategories {
+  documents: [String!]!
+  images: [String!]!
+  videos: [String!]!
+  audio: [String!]!
+  archives: [String!]!
+  code: [String!]!
+}
+
+type Mutation {
+  registerUser(email: String!, username: String!, password: String!): AuthPayload!
+  loginUser(email: String!, password: String!): AuthPayload!
+  deleteFile(id: ID!): Boolean!
+  
+  
+  # File sharing mutations
+  createFileShare(fileId: ID!, expiresAt: String, maxDownloads: Int): FileShare!
+  updateFileShare(shareId: ID!, isActive: Boolean, expiresAt: String, maxDownloads: Int): FileShare!
+  deleteFileShare(shareId: ID!): Boolean!
+  
+  # Admin mutations
+  adminDeleteUser(userId: ID!): Boolean!
+  adminUpdateUserRole(userId: ID!, role: String!): Boolean!
+}
+
+# Admin types
+type AdminStats {
+  totalUsers: Int!
+  totalFiles: Int!
+  totalStorage: Int!
+  uniqueFiles: Int!
+  duplicateFiles: Int!
+  storageEfficiency: Float!
+  activeUsers: Int!
+  newUsersToday: Int!
+}
+
+type UserStats {
+  userId: ID!
+  username: String!
+  email: String!
+  totalFiles: Int!
+  storageUsed: Int!
+  lastLogin: String
+  createdAt: String!
+  isActive: Boolean!
+}
+
+type SystemHealth {
+  databaseStatus: String!
+  storageStatus: String!
+  uptime: String!
+  memoryUsage: Float!
+  diskUsage: Float!
+  lastBackup: String
+}
+
+# File sharing types
+type FileShare {
+  id: ID!
+  fileId: ID!
+  shareToken: String!
+  shareUrl: String!
+  isActive: Boolean!
+  expiresAt: String
+  downloadCount: Int!
+  maxDownloads: Int
+  createdAt: String!
+  file: File!
+}
+
+type FileShareStats {
+  downloadCount: Int!
+  recentDownloads: [DownloadLog!]!
+}
+
+type DownloadLog {
+  id: ID!
+  ipAddress: String
+  userAgent: String
+  downloadedAt: String!
+}
