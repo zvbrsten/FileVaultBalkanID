@@ -1,5 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../hooks/useNotification';
+import { useQuery, useMutation } from '@apollo/client';
+import { GET_FOLDERS, CREATE_FOLDER } from '../api/queries';
 
 interface UploadProgress {
   file: File;
@@ -10,13 +13,61 @@ interface UploadProgress {
 
 const UploadPage: React.FC = () => {
   const { user } = useAuth();
+  const { addNotification } = useNotification();
   const token = localStorage.getItem('token');
   const [files, setFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  
+  // Folder selection state
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  
+  // GraphQL queries and mutations
+  const { data: foldersData, loading: foldersLoading, refetch: refetchFolders } = useQuery(GET_FOLDERS);
+  const [createFolder] = useMutation(CREATE_FOLDER);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+  
+  // Folder management functions
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    
+    try {
+      await createFolder({
+        variables: {
+          name: newFolderName.trim(),
+          parentId: null // Root folder for now
+        }
+      });
+      
+      // Show success notification
+      addNotification({
+        type: 'success',
+        title: 'Folder Created!',
+        message: `Folder "${newFolderName.trim()}" has been created successfully`,
+        duration: 3000
+      });
+      
+      setNewFolderName('');
+      setShowCreateFolder(false);
+      refetchFolders();
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      
+      // Show error notification
+      addNotification({
+        type: 'error',
+        title: 'Failed to Create Folder',
+        message: `Could not create folder "${newFolderName.trim()}": ${error instanceof Error ? error.message : 'Unknown error'}`,
+        duration: 5000
+      });
+    }
+  };
+  
+  const folders = foldersData?.folders || [];
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -62,6 +113,11 @@ const UploadPage: React.FC = () => {
 
     const formData = new FormData();
     formData.append('file', file);
+    
+    // Add folder_id if selected
+    if (selectedFolderId) {
+      formData.append('folder_id', selectedFolderId);
+    }
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -88,6 +144,16 @@ const UploadPage: React.FC = () => {
                 : item
             )
           );
+          
+          // Show success notification
+          const folderName = foldersData?.folders?.find((f: any) => f.id === selectedFolderId)?.name || 'root';
+          addNotification({
+            type: 'success',
+            title: 'File Uploaded Successfully!',
+            message: `${file.name} has been uploaded to ${folderName}`,
+            duration: 4000
+          });
+          
           resolve();
         } else {
           const error = `Upload failed: ${xhr.statusText}`;
@@ -98,6 +164,15 @@ const UploadPage: React.FC = () => {
                 : item
             )
           );
+          
+          // Show error notification
+          addNotification({
+            type: 'error',
+            title: 'Upload Failed',
+            message: `Failed to upload ${file.name}: ${xhr.statusText}`,
+            duration: 6000
+          });
+          
           reject(new Error(error));
         }
       });
@@ -188,38 +263,125 @@ const UploadPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6 animate-fade-in">
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Upload Files</h1>
-          <p className="text-gray-600">Upload files to your vault</p>
+        <div className="animate-slide-up">
+          <h1 className="text-2xl font-bold text-foreground">Upload Files</h1>
+          <p className="text-muted-foreground">Upload files to your vault</p>
+        </div>
+
+        {/* Folder Selection */}
+        <div className="glass rounded-lg shadow-lg p-6 hover-lift animate-slide-up">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Select Destination Folder</h2>
+            <p className="text-sm text-muted-foreground">Choose where to upload your files</p>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Folder Dropdown */}
+            <div>
+              <label htmlFor="folder-select" className="block text-sm font-medium text-foreground mb-2">
+                Upload to folder:
+              </label>
+              <div className="flex space-x-3">
+                <select
+                  id="folder-select"
+                  value={selectedFolderId || ''}
+                  onChange={(e) => setSelectedFolderId(e.target.value || null)}
+                  className="flex-1 block w-full px-3 py-2 bg-background border border-border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring text-foreground sm:text-sm transition-all duration-200"
+                >
+                  <option value="">Root folder (no folder)</option>
+                  {folders.map((folder: any) => (
+                    <option key={folder.id} value={folder.id}>
+                      {folder.name} ({folder.fileCount} files)
+                    </option>
+                  ))}
+                </select>
+                
+                <button
+                  onClick={() => setShowCreateFolder(!showCreateFolder)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 hover-scale"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  New Folder
+                </button>
+              </div>
+            </div>
+            
+            {/* Create New Folder Form */}
+            {showCreateFolder && (
+              <div className="border border-border rounded-lg p-4 bg-muted/30 animate-fade-in">
+                <h3 className="text-sm font-medium text-foreground mb-3">Create New Folder</h3>
+                <div className="flex space-x-3">
+                  <input
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    placeholder="Enter folder name..."
+                    className="flex-1 block w-full px-3 py-2 bg-background border border-border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring text-foreground sm:text-sm transition-all duration-200"
+                    onKeyPress={(e) => e.key === 'Enter' && handleCreateFolder()}
+                  />
+                  <button
+                    onClick={handleCreateFolder}
+                    disabled={!newFolderName.trim()}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover-scale"
+                  >
+                    Create
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateFolder(false);
+                      setNewFolderName('');
+                    }}
+                    className="inline-flex items-center px-4 py-2 border border-border text-sm font-medium rounded-md shadow-sm text-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover-scale"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Selected Folder Display */}
+            {selectedFolderId && (
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                </svg>
+                <span>
+                  Files will be uploaded to: <strong>{folders.find((f: any) => f.id === selectedFolderId)?.name || 'Unknown folder'}</strong>
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Upload Area */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass rounded-lg shadow-lg p-6 hover-lift animate-slide-up">
           <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-200 ${
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 ${
               isDragOver 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-300 hover:border-gray-400'
+                ? 'border-primary bg-primary/10 scale-105' 
+                : 'border-border hover:border-primary/50 hover:bg-accent/20'
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
             <div className="space-y-4">
-              <div className="mx-auto w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mx-auto w-12 h-12 bg-muted rounded-lg flex items-center justify-center transition-all duration-200 hover-scale">
+                <svg className="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
               </div>
               
               <div>
-                <h3 className="text-lg font-medium text-gray-900">
+                <h3 className="text-lg font-medium text-foreground">
                   {isDragOver ? 'Drop files here' : 'Upload files'}
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-muted-foreground">
                   Drag and drop files here, or click to select files
                 </p>
               </div>
@@ -234,7 +396,7 @@ const UploadPage: React.FC = () => {
                 />
                 <label
                   htmlFor="file-upload"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring cursor-pointer transition-all duration-200 hover-scale hover-glow"
                 >
                   Select Files
                 </label>
@@ -245,28 +407,28 @@ const UploadPage: React.FC = () => {
 
         {/* Selected Files */}
         {files.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass rounded-lg shadow-lg p-6 hover-lift animate-slide-up">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-foreground">
                 Selected Files ({files.length})
               </h2>
             </div>
             
             <div className="space-y-3">
               {files.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 animate-scale-in" style={{ animationDelay: `${index * 0.05}s` }}>
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
                       {getFileIcon(file)}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                      <p className="text-xs text-gray-500">{formatBytes(file.size)} • {file.type}</p>
+                      <p className="text-sm font-medium text-foreground">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatBytes(file.size)} • {file.type}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => removeFile(index)}
-                    className="text-red-600 hover:text-red-800"
+                    className="text-destructive hover:text-destructive/80 transition-colors duration-200 hover-scale"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -279,14 +441,14 @@ const UploadPage: React.FC = () => {
             <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={() => setFiles([])}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex items-center px-4 py-2 border border-border shadow-sm text-sm font-medium rounded-md text-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover-scale"
               >
                 Clear All
               </button>
               <button
                 onClick={handleUpload}
                 disabled={isUploading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover-scale hover-glow"
               >
                 {isUploading ? (
                   <div className="flex items-center">
@@ -308,13 +470,13 @@ const UploadPage: React.FC = () => {
 
         {/* Upload Progress */}
         {uploadProgress.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass rounded-lg shadow-lg p-6 hover-lift animate-slide-up">
             <div className="mb-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Upload Progress</h2>
+                <h2 className="text-lg font-semibold text-foreground">Upload Progress</h2>
                 <button
                   onClick={clearCompleted}
-                  className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="inline-flex items-center px-3 py-1 border border-border shadow-sm text-xs font-medium rounded text-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover-scale"
                 >
                   Clear Completed
                 </button>
@@ -323,47 +485,47 @@ const UploadPage: React.FC = () => {
             
             <div className="space-y-4">
               {uploadProgress.map((item, index) => (
-                <div key={index} className="space-y-2">
+                <div key={index} className="space-y-2 animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="flex-shrink-0">
                         {getFileIcon(item.file)}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{item.file.name}</p>
-                        <p className="text-xs text-gray-500">{formatBytes(item.file.size)}</p>
+                        <p className="text-sm font-medium text-foreground">{item.file.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatBytes(item.file.size)}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-500">{item.progress}%</span>
+                      <span className="text-sm text-muted-foreground">{item.progress}%</span>
                       {item.status === 'completed' && (
-                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       )}
                       {item.status === 'error' && (
-                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       )}
                     </div>
                   </div>
                   
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-muted rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full ${
+                      className={`h-2 rounded-full transition-all duration-300 ${
                         item.status === 'error' 
-                          ? 'bg-red-600' 
+                          ? 'bg-destructive' 
                           : item.status === 'completed' 
-                          ? 'bg-green-600' 
-                          : 'bg-blue-600'
+                          ? 'bg-green-500' 
+                          : 'bg-primary'
                       }`}
                       style={{ width: `${item.progress}%` }}
                     />
                   </div>
                   
                   {item.error && (
-                    <p className="text-sm text-red-600">{item.error}</p>
+                    <p className="text-sm text-destructive">{item.error}</p>
                   )}
                 </div>
               ))}

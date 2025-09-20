@@ -56,6 +56,7 @@ export const FILES_QUERY = gql`
       hash
       isDuplicate
       uploaderId
+      folderId
       uploader {
         id
         username
@@ -78,6 +79,7 @@ export const SEARCH_FILES_QUERY = gql`
       hash
       isDuplicate
       uploaderId
+      folderId
       uploader {
         id
         username
@@ -106,6 +108,112 @@ export const GET_QUOTA = gql`
       filesByMimeType {
         mimeType
         count
+      }
+    }
+  }
+`;
+
+// Folder queries and mutations
+export const GET_FOLDERS = gql`
+  query GetFolders {
+    folders {
+      id
+      name
+      path
+      fileCount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const CREATE_FOLDER = gql`
+  mutation CreateFolder($name: String!, $parentId: ID) {
+    createFolder(name: $name, parentId: $parentId) {
+      id
+      name
+      path
+      fileCount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const UPDATE_FOLDER = gql`
+  mutation UpdateFolder($id: ID!, $name: String!) {
+    updateFolder(id: $id, name: $name) {
+      id
+      name
+      path
+      fileCount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const DELETE_FOLDER = gql`
+  mutation DeleteFolder($id: ID!) {
+    deleteFolder(id: $id)
+  }
+`;
+
+// Query to get files by folder
+export const GET_FILES_BY_FOLDER = gql`
+  query GetFilesByFolder($folderId: ID!, $limit: Int, $offset: Int) {
+    filesByFolder(folderId: $folderId, limit: $limit, offset: $offset) {
+      id
+      filename
+      originalName
+      mimeType
+      size
+      hash
+      isDuplicate
+      uploaderId
+      folderId
+      uploader {
+        id
+        username
+        email
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const GET_MY_FILE_SHARES = gql`
+  query GetMyFileShares($limit: Int, $offset: Int) {
+    myFileShares(limit: $limit, offset: $offset) {
+      id
+      fileId
+      shareToken
+      shareUrl
+      isActive
+      expiresAt
+      downloadCount
+      maxDownloads
+      createdAt
+      file {
+        id
+        originalName
+        mimeType
+        size
+      }
+    }
+  }
+`;
+
+export const GET_FILE_SHARE_STATS = gql`
+  query GetFileShareStats($shareId: ID!) {
+    fileShareStats(shareId: $shareId) {
+      downloadCount
+      recentDownloads {
+        id
+        ipAddress
+        userAgent
+        downloadedAt
       }
     }
   }
