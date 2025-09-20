@@ -142,9 +142,9 @@ func (s *SearchService) buildWhereClause(userID uuid.UUID, filters SearchFilters
 	// Search term (searches in filename and original name)
 	if filters.SearchTerm != "" {
 		searchPattern := "%" + strings.ToLower(filters.SearchTerm) + "%"
-		conditions = append(conditions, fmt.Sprintf("(LOWER(f.original_name) LIKE $%d OR LOWER(f.filename) LIKE $%d)", argIndex, argIndex))
-		args = append(args, searchPattern)
-		argIndex++
+		conditions = append(conditions, fmt.Sprintf("(LOWER(f.original_name) LIKE $%d OR LOWER(f.filename) LIKE $%d)", argIndex, argIndex+1))
+		args = append(args, searchPattern, searchPattern)
+		argIndex += 2
 	}
 
 	// MIME type filter

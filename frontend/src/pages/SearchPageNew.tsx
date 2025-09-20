@@ -57,7 +57,7 @@ const SearchPage: React.FC = () => {
       
       // Build the GraphQL query
       const query = `
-        query SearchFiles(
+        query AdvancedSearch(
           $searchTerm: String
           $mimeTypes: [String!]
           $minSize: Int
@@ -70,7 +70,7 @@ const SearchPage: React.FC = () => {
           $limit: Int
           $offset: Int
         ) {
-          searchFiles(
+          advancedSearch(
             searchTerm: $searchTerm
             mimeTypes: $mimeTypes
             minSize: $minSize
@@ -83,17 +83,21 @@ const SearchPage: React.FC = () => {
             limit: $limit
             offset: $offset
           ) {
-            id
-            filename
-            originalName
-            mimeType
-            size
-            hash
-            isDuplicate
-            uploaderId
-            folderId
-            createdAt
-            updatedAt
+            files {
+              id
+              filename
+              originalName
+              mimeType
+              size
+              hash
+              isDuplicate
+              uploaderId
+              folderId
+              createdAt
+              updatedAt
+            }
+            totalCount
+            hasMore
           }
         }
       `;
@@ -110,9 +114,15 @@ const SearchPage: React.FC = () => {
       if (filters.sizeRange[1] < 100) variables.maxSize = filters.sizeRange[1] * 1024 * 1024; // Convert MB to bytes
       if (filters.dateRange.start) variables.dateFrom = filters.dateRange.start;
       if (filters.dateRange.end) variables.dateTo = filters.dateRange.end;
-      if (!filters.showDuplicates || !filters.showOriginals) {
-        variables.isDuplicate = filters.showDuplicates && !filters.showOriginals;
+      // Handle duplicate filter logic
+      if (!filters.showDuplicates && filters.showOriginals) {
+        // Show only originals (not duplicates)
+        variables.isDuplicate = false;
+      } else if (filters.showDuplicates && !filters.showOriginals) {
+        // Show only duplicates
+        variables.isDuplicate = true;
       }
+      // If both are true or both are false, don't set isDuplicate filter (show all)
       if (filters.sortBy) variables.sortBy = filters.sortBy;
       if (filters.sortOrder) variables.sortOrder = filters.sortOrder;
 
@@ -137,7 +147,7 @@ const SearchPage: React.FC = () => {
         throw new Error(data.errors[0].message);
       }
 
-      setSearchResults(data.data.searchFiles || []);
+      setSearchResults(data.data.advancedSearch?.files || []);
     } catch (err: any) {
       setError(err.message || 'Search failed');
       addNotification({
