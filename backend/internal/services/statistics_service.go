@@ -14,11 +14,11 @@ import (
 type StatisticsService struct {
 	fileRepo     repositories.FileRepositoryInterface
 	fileHashRepo repositories.FileHashRepositoryInterface
-	userRepo     repositories.UserRepositoryInterface
+	userRepo     *repositories.UserRepository
 }
 
 // NewStatisticsService creates a new statistics service
-func NewStatisticsService(fileRepo repositories.FileRepositoryInterface, fileHashRepo repositories.FileHashRepositoryInterface, userRepo repositories.UserRepositoryInterface) *StatisticsService {
+func NewStatisticsService(fileRepo repositories.FileRepositoryInterface, fileHashRepo repositories.FileHashRepositoryInterface, userRepo *repositories.UserRepository) *StatisticsService {
 	return &StatisticsService{
 		fileRepo:     fileRepo,
 		fileHashRepo: fileHashRepo,
@@ -56,7 +56,7 @@ type SystemStats struct {
 // GetUserFileStats returns comprehensive statistics for a user
 func (s *StatisticsService) GetUserFileStats(userID uuid.UUID) (*UserFileStats, error) {
 	// Get all files for the user
-	files, err := s.fileRepo.GetFilesByUserID(userID, 10000, 0)
+	files, err := s.fileRepo.GetByUserID(userID, 10000, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user files: %w", err)
 	}
@@ -119,7 +119,7 @@ func (s *StatisticsService) GetUserFileStats(userID uuid.UUID) (*UserFileStats, 
 	}
 
 	// Get recent files (last 10)
-	recentFiles, err := s.fileRepo.GetFilesByUserID(userID, 10, 0)
+	recentFiles, err := s.fileRepo.GetByUserID(userID, 10, 0)
 	if err == nil {
 		stats.RecentFiles = recentFiles
 	}
@@ -131,7 +131,7 @@ func (s *StatisticsService) GetUserFileStats(userID uuid.UUID) (*UserFileStats, 
 func (s *StatisticsService) GetSystemStats() (*SystemStats, error) {
 	// For now, return basic stats with placeholder values
 	// TODO: Implement proper repository methods for system-wide statistics
-	
+
 	return &SystemStats{
 		TotalUsers:        0,
 		TotalFiles:        0,
@@ -177,7 +177,7 @@ func (s *StatisticsService) GetUserActivityStats(userID uuid.UUID, days int) (ma
 
 	// For now, return basic stats with placeholder values
 	// TODO: Implement GetFilesByUserIDAndDateRange method in repository
-	
+
 	stats["filesUploaded"] = 0
 	stats["totalSizeUploaded"] = int64(0)
 	stats["averageFileSize"] = int64(0)
@@ -186,6 +186,3 @@ func (s *StatisticsService) GetUserActivityStats(userID uuid.UUID, days int) (ma
 
 	return stats, nil
 }
-
-
-
