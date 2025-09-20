@@ -47,6 +47,7 @@ func main() {
 	shareRepo := repositories.NewShareRepository(db)
 	downloadRepo := repositories.NewDownloadRepository(db)
 	fileShareRepo := repositories.NewFileShareRepository(db)
+	folderRepo := repositories.NewFolderRepository(db)
 
 	// Initialize S3 service
 	log.Printf("DEBUG: Initializing S3Service with AWS Region: %s, Bucket: %s", cfg.AWSRegion, cfg.S3BucketName)
@@ -65,6 +66,7 @@ func main() {
 	quotaService := services.NewQuotaService(fileRepo, cfg.StorageQuotaMB)
 	searchService := services.NewSearchService(fileRepo)
 	adminService := services.NewAdminService(userRepo, fileRepo)
+	folderService := services.NewFolderService(folderRepo)
 
 	// Initialize file share service with S3 configuration
 	log.Printf("DEBUG: Initializing FileShareService with AWS Region: %s, Bucket: %s, BaseURL: %s", cfg.AWSRegion, cfg.S3BucketName, cfg.BaseURL)
@@ -83,8 +85,8 @@ func main() {
 	log.Printf("DEBUG: FileShareService initialized successfully")
 
 	// Create simple GraphQL server
-	log.Printf("DEBUG: Creating GraphQL server with FileShareService")
-	graphqlServer := graph.NewSimpleGraphQLServer(authService, fileService, searchService, adminService, fileShareService)
+	log.Printf("DEBUG: Creating GraphQL server with FileShareService and FolderService")
+	graphqlServer := graph.NewSimpleGraphQLServer(authService, fileService, searchService, adminService, fileShareService, folderService)
 	log.Printf("DEBUG: GraphQL server created successfully")
 
 	// Setup Gin router
@@ -176,9 +178,23 @@ func main() {
 		fmt.Printf("DEBUG: File received - Name: %s, Size: %d, Content-Type: %s\n",
 			header.Filename, header.Size, header.Header.Get("Content-Type"))
 
+		// Get folder_id from form (optional)
+		var folderID *uuid.UUID
+		if folderIDStr := c.PostForm("folder_id"); folderIDStr != "" {
+			fmt.Printf("DEBUG: Folder ID provided: %s\n", folderIDStr)
+			if parsedFolderID, err := uuid.Parse(folderIDStr); err == nil {
+				folderID = &parsedFolderID
+				fmt.Printf("DEBUG: Parsed folder ID: %s\n", folderID.String())
+			} else {
+				fmt.Printf("WARNING: Invalid folder ID format: %s\n", folderIDStr)
+			}
+		} else {
+			fmt.Println("DEBUG: No folder ID provided, uploading to root")
+		}
+
 		// Upload file using service
 		fmt.Println("DEBUG: Calling FileService.UploadFile...")
-		uploadedFile, err := fileService.UploadFile(file, header, userModel.ID)
+		uploadedFile, err := fileService.UploadFile(file, header, userModel.ID, folderID)
 		if err != nil {
 			fmt.Printf("ERROR: FileService.UploadFile failed: %v\n", err)
 			c.JSON(500, gin.H{"error": err.Error()})

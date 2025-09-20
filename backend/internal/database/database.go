@@ -58,7 +58,9 @@ func Migrate(databaseURL string) error {
 		"012_fix_share_token_function.sql",
 		"013_create_folders_table.sql",
 		"015_create_folder_functions.sql",
-		"016_remove_folder_id_from_files.sql",
+		"017_restore_folder_id_to_files.sql",
+		"019_fix_null_folder_paths.sql",
+		"020_add_folder_file_count_triggers.sql",
 	}
 
 	for _, filename := range migrationFiles {
