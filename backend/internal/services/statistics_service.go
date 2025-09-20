@@ -284,3 +284,4 @@ func (s *StatisticsService) GetUserActivityStats(userID uuid.UUID, days int) (ma
 }
 
 
+
