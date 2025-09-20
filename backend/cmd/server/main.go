@@ -9,6 +9,7 @@ import (
 	"filevault/internal/models"
 	"filevault/internal/repositories"
 	"filevault/internal/services"
+	"filevault/internal/websocket"
 	"fmt"
 	"io"
 	"log"
@@ -59,13 +60,18 @@ func main() {
 	}
 	log.Printf("DEBUG: S3Service initialized successfully")
 
+	// Initialize WebSocket hub
+	hub := websocket.NewHub()
+	go hub.Run()
+
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	mimeValidationService := services.NewMimeValidationService()
-	fileService := services.NewFileService(fileRepo, fileHashRepo, shareRepo, downloadRepo, s3Service, mimeValidationService)
+	websocketService := services.NewWebSocketService(hub)
+	fileService := services.NewFileService(fileRepo, fileHashRepo, shareRepo, downloadRepo, s3Service, mimeValidationService, websocketService)
 	quotaService := services.NewQuotaService(fileRepo, cfg.StorageQuotaMB)
 	searchService := services.NewSearchService(fileRepo)
-	adminService := services.NewAdminService(userRepo, fileRepo)
+	adminService := services.NewAdminService(userRepo, fileRepo, websocketService)
 	folderService := services.NewFolderService(folderRepo)
 
 	// Initialize file share service with S3 configuration
@@ -78,6 +84,7 @@ func main() {
 		cfg.AWSSecretKey,
 		cfg.S3BucketName,
 		cfg.BaseURL,
+		websocketService,
 	)
 	if err != nil {
 		log.Fatal("Failed to initialize file share service:", err)
@@ -347,6 +354,13 @@ func main() {
 
 		c.JSON(200, quotaInfo)
 	})
+
+	// Initialize WebSocket handler
+	wsHandler := handlers.NewWebSocketHandler(hub, authService, websocketService)
+
+	// WebSocket endpoint (outside auth middleware - handles auth internally)
+	r.GET("/api/ws", wsHandler.HandleWebSocket)
+	api.GET("/ws/status", wsHandler.GetConnectionStatus)
 
 	// File sharing routes
 	handlers.RegisterFileShareRoutes(r, fileShareService)
