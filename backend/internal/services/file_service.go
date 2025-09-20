@@ -27,6 +27,7 @@ type FileService struct {
 	downloadRepo          repositories.DownloadRepositoryInterface
 	s3Service             S3ServiceInterface
 	mimeValidationService *MimeValidationService
+	websocketService      *WebSocketService
 }
 
 // NewFileService creates a new file service with all required dependencies
@@ -37,6 +38,7 @@ func NewFileService(
 	downloadRepo repositories.DownloadRepositoryInterface,
 	s3Service S3ServiceInterface,
 	mimeValidationService *MimeValidationService,
+	websocketService *WebSocketService,
 ) *FileService {
 	return &FileService{
 		fileRepo:              fileRepo,
@@ -45,6 +47,7 @@ func NewFileService(
 		downloadRepo:          downloadRepo,
 		s3Service:             s3Service,
 		mimeValidationService: mimeValidationService,
+		websocketService:      websocketService,
 	}
 }
 
@@ -119,6 +122,18 @@ func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.File
 			fmt.Printf("ERROR: Failed to create file reference: %v\n", err)
 			return nil, err
 		}
+
+		// Broadcast file upload complete event
+		if s.websocketService != nil {
+			s.websocketService.BroadcastFileUploadComplete(
+				uploaderID.String(),
+				result.ID.String(),
+				result.OriginalName,
+				result.Size,
+				true, // isDuplicate
+			)
+		}
+
 		fmt.Printf("SUCCESS: File reference created: %s\n", result.ID)
 		fmt.Println("=== FILE SERVICE UPLOAD DEBUG END (DUPLICATE) ===")
 		return result, nil
@@ -131,6 +146,17 @@ func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.File
 		fmt.Printf("ERROR: Failed to save new file to S3: %v\n", err)
 		fmt.Println("=== FILE SERVICE UPLOAD DEBUG END (ERROR) ===")
 		return nil, err
+	}
+
+	// Broadcast file upload complete event
+	if s.websocketService != nil {
+		s.websocketService.BroadcastFileUploadComplete(
+			uploaderID.String(),
+			result.ID.String(),
+			result.OriginalName,
+			result.Size,
+			false, // isDuplicate
+		)
 	}
 
 	fmt.Printf("SUCCESS: New file uploaded to S3: %s\n", result.ID)
@@ -277,6 +303,15 @@ func (s *FileService) DeleteFile(fileID uuid.UUID, userID uuid.UUID) error {
 	// Check if user is the uploader
 	if file.UploaderID != userID {
 		return fmt.Errorf("unauthorized: only the uploader can delete this file")
+	}
+
+	// Broadcast file deleted event
+	if s.websocketService != nil {
+		s.websocketService.BroadcastFileDeleted(
+			userID.String(),
+			fileID.String(),
+			file.OriginalName,
+		)
 	}
 
 	// Delete file record

@@ -6,6 +6,7 @@ import (
 
 	"filevault/internal/models"
 	"filevault/internal/repositories"
+	"filevault/internal/websocket"
 
 	"github.com/google/uuid"
 )
@@ -46,15 +47,17 @@ type SystemHealth struct {
 
 // AdminService handles admin-specific operations
 type AdminService struct {
-	userRepo *repositories.UserRepository
-	fileRepo *repositories.FileRepository
+	userRepo         *repositories.UserRepository
+	fileRepo         *repositories.FileRepository
+	websocketService *WebSocketService
 }
 
 // NewAdminService creates a new admin service
-func NewAdminService(userRepo *repositories.UserRepository, fileRepo *repositories.FileRepository) *AdminService {
+func NewAdminService(userRepo *repositories.UserRepository, fileRepo *repositories.FileRepository, websocketService *WebSocketService) *AdminService {
 	return &AdminService{
-		userRepo: userRepo,
-		fileRepo: fileRepo,
+		userRepo:         userRepo,
+		fileRepo:         fileRepo,
+		websocketService: websocketService,
 	}
 }
 
@@ -109,6 +112,20 @@ func (s *AdminService) GetSystemStats() (*AdminStats, error) {
 		return nil, fmt.Errorf("failed to get new users today: %w", err)
 	}
 	stats.NewUsersToday = newUsersToday
+
+	// Broadcast system stats update to admins
+	if s.websocketService != nil {
+		s.websocketService.BroadcastSystemStatsUpdate(websocket.SystemStatsUpdateData{
+			TotalUsers:        int(stats.TotalUsers),
+			TotalFiles:        int(stats.TotalFiles),
+			TotalStorage:      stats.TotalStorage,
+			UniqueFiles:       int(stats.UniqueFiles),
+			DuplicateFiles:    int(stats.DuplicateFiles),
+			StorageEfficiency: stats.StorageEfficiency,
+			ActiveUsers:       int(stats.ActiveUsers),
+			NewUsersToday:     int(stats.NewUsersToday),
+		})
+	}
 
 	return stats, nil
 }

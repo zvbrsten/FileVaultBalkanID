@@ -18,11 +18,12 @@ import (
 
 // FileShareService handles file sharing business logic
 type FileShareService struct {
-	fileShareRepo *repositories.FileShareRepository
-	fileRepo      repositories.FileRepositoryInterface
-	s3Client      *s3.Client
-	bucketName    string
-	baseURL       string
+	fileShareRepo    *repositories.FileShareRepository
+	fileRepo         repositories.FileRepositoryInterface
+	s3Client         *s3.Client
+	bucketName       string
+	baseURL          string
+	websocketService *WebSocketService
 }
 
 // NewFileShareService creates a new file share service
@@ -30,6 +31,7 @@ func NewFileShareService(
 	fileShareRepo *repositories.FileShareRepository,
 	fileRepo repositories.FileRepositoryInterface,
 	awsRegion, awsAccessKey, awsSecretKey, bucketName, baseURL string,
+	websocketService *WebSocketService,
 ) (*FileShareService, error) {
 	fmt.Printf("DEBUG: NewFileShareService called with region=%s, bucket=%s, baseURL=%s\n", awsRegion, bucketName, baseURL)
 
@@ -49,11 +51,12 @@ func NewFileShareService(
 	fmt.Printf("DEBUG: S3 client created successfully\n")
 
 	service := &FileShareService{
-		fileShareRepo: fileShareRepo,
-		fileRepo:      fileRepo,
-		s3Client:      s3Client,
-		bucketName:    bucketName,
-		baseURL:       baseURL,
+		fileShareRepo:    fileShareRepo,
+		fileRepo:         fileRepo,
+		s3Client:         s3Client,
+		bucketName:       bucketName,
+		baseURL:          baseURL,
+		websocketService: websocketService,
 	}
 
 	fmt.Printf("DEBUG: FileShareService created successfully\n")
@@ -144,6 +147,22 @@ func (s *FileShareService) CreateFileShare(userID uuid.UUID, req *models.CreateF
 		File:          file,
 	}
 
+	// Broadcast file shared event to user
+	if s.websocketService != nil {
+		expiresAtStr := ""
+		if response.ExpiresAt != nil {
+			expiresAtStr = response.ExpiresAt.Format(time.RFC3339)
+		}
+		s.websocketService.BroadcastFileShared(
+			userID.String(),
+			response.FileID.String(),
+			response.File.OriginalName,
+			response.ID.String(),
+			response.ShareURL,
+			expiresAtStr,
+		)
+	}
+
 	fmt.Printf("DEBUG: Returning file share response: %+v\n", response)
 	return response, nil
 }
@@ -195,6 +214,16 @@ func (s *FileShareService) DownloadSharedFile(token string, ipAddress, userAgent
 	if err != nil {
 		// Log error but don't fail the download
 		fmt.Printf("Failed to increment download count: %v\n", err)
+	}
+
+	// Broadcast download count update to file owner
+	if s.websocketService != nil {
+		s.websocketService.BroadcastDownloadCountUpdate(
+			share.File.ID.String(),
+			share.ID.String(),
+			share.File.UploaderID.String(),
+			share.DownloadCount+1, // +1 because we just incremented
+		)
 	}
 
 	// Check if file has S3 key (new files) or use filename (legacy files)
@@ -321,6 +350,16 @@ func (s *FileShareService) DeleteFileShare(userID uuid.UUID, shareID uuid.UUID) 
 	err = s.fileShareRepo.Delete(shareID)
 	if err != nil {
 		return fmt.Errorf("failed to delete file share: %w", err)
+	}
+
+	// Broadcast share deleted event to user
+	if s.websocketService != nil {
+		s.websocketService.BroadcastShareDeleted(
+			userID.String(),
+			shareID.String(),
+			file.ID.String(),
+			file.OriginalName,
+		)
 	}
 
 	return nil
