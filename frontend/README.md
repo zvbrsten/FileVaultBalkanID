@@ -177,3 +177,4 @@ The application uses Tailwind CSS for styling with:
 
 This project is licensed under the MIT License.
 
+
