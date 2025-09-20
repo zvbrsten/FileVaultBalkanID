@@ -50,10 +50,10 @@ func NewFileService(
 
 // UploadFile uploads a file with deduplication to S3
 // Returns the file record or an error if upload fails
-func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.FileHeader, uploaderID uuid.UUID) (*models.File, error) {
+func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.FileHeader, uploaderID uuid.UUID, folderID *uuid.UUID) (*models.File, error) {
 	fmt.Println("=== FILE SERVICE UPLOAD DEBUG START ===")
-	fmt.Printf("DEBUG: FileService.UploadFile called - File: %s, Size: %d, Uploader: %s\n",
-		fileHeader.Filename, fileHeader.Size, uploaderID.String())
+	fmt.Printf("DEBUG: FileService.UploadFile called - File: %s, Size: %d, Uploader: %s, FolderID: %v\n",
+		fileHeader.Filename, fileHeader.Size, uploaderID.String(), folderID)
 
 	// Validate file size (max 100MB)
 	const maxFileSize = 100 * 1024 * 1024
@@ -114,7 +114,7 @@ func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.File
 	if err == nil {
 		fmt.Println("DEBUG: Duplicate file detected, creating reference...")
 		// File already exists, create a reference
-		result, err := s.createFileReference(fileHeader, uploaderID, existingFileHash)
+		result, err := s.createFileReference(fileHeader, uploaderID, existingFileHash, folderID)
 		if err != nil {
 			fmt.Printf("ERROR: Failed to create file reference: %v\n", err)
 			return nil, err
@@ -126,7 +126,7 @@ func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.File
 	fmt.Println("DEBUG: New file detected, proceeding with S3 upload...")
 
 	// New file, upload to S3
-	result, err := s.saveNewFileToS3(fileHeader, uploaderID, hashString, contentReader)
+	result, err := s.saveNewFileToS3(fileHeader, uploaderID, hashString, contentReader, folderID)
 	if err != nil {
 		fmt.Printf("ERROR: Failed to save new file to S3: %v\n", err)
 		fmt.Println("=== FILE SERVICE UPLOAD DEBUG END (ERROR) ===")
@@ -139,7 +139,7 @@ func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.File
 }
 
 // createFileReference creates a file reference for an existing file
-func (s *FileService) createFileReference(fileHeader *multipart.FileHeader, uploaderID uuid.UUID, existingFileHash *models.FileHash) (*models.File, error) {
+func (s *FileService) createFileReference(fileHeader *multipart.FileHeader, uploaderID uuid.UUID, existingFileHash *models.FileHash, folderID *uuid.UUID) (*models.File, error) {
 	fmt.Println("DEBUG: Creating file reference for duplicate file...")
 	file := &models.File{
 		ID:           uuid.New(),
@@ -150,6 +150,7 @@ func (s *FileService) createFileReference(fileHeader *multipart.FileHeader, uplo
 		Hash:         existingFileHash.Hash,
 		IsDuplicate:  true, // This is a duplicate file
 		UploaderID:   uploaderID,
+		FolderID:     folderID,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -165,7 +166,7 @@ func (s *FileService) createFileReference(fileHeader *multipart.FileHeader, uplo
 }
 
 // saveNewFileToS3 saves a new file to S3 and database
-func (s *FileService) saveNewFileToS3(fileHeader *multipart.FileHeader, uploaderID uuid.UUID, hashString string, src io.Reader) (*models.File, error) {
+func (s *FileService) saveNewFileToS3(fileHeader *multipart.FileHeader, uploaderID uuid.UUID, hashString string, src io.Reader, folderID *uuid.UUID) (*models.File, error) {
 	fmt.Println("DEBUG: Starting S3 upload process...")
 
 	// Upload file to S3
@@ -218,6 +219,7 @@ func (s *FileService) saveNewFileToS3(fileHeader *multipart.FileHeader, uploader
 		S3Key:        s3Key,
 		IsDuplicate:  false, // This is a new unique file
 		UploaderID:   uploaderID,
+		FolderID:     folderID,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -238,7 +240,20 @@ func (s *FileService) saveNewFileToS3(fileHeader *multipart.FileHeader, uploader
 
 // GetFilesByUserID retrieves files for a specific user
 func (s *FileService) GetFilesByUserID(userID uuid.UUID, limit, offset int) ([]*models.File, error) {
-	return s.fileRepo.GetByUserID(userID, limit, offset)
+	fmt.Printf("DEBUG: FileService.GetFilesByUserID called - User: %s, Limit: %d, Offset: %d\n", userID, limit, offset)
+	files, err := s.fileRepo.GetByUserID(userID, limit, offset)
+	if err != nil {
+		fmt.Printf("ERROR: FileService.GetFilesByUserID failed: %v\n", err)
+		return nil, err
+	}
+	fmt.Printf("SUCCESS: FileService.GetFilesByUserID retrieved %d files\n", len(files))
+	return files, nil
+}
+
+// GetFilesByFolderID retrieves files in a specific folder for a user
+func (s *FileService) GetFilesByFolderID(userID uuid.UUID, folderID uuid.UUID, limit, offset int) ([]*models.File, error) {
+	fmt.Printf("DEBUG: FileService.GetFilesByFolderID called - User: %s, Folder: %s\n", userID, folderID)
+	return s.fileRepo.GetByUserIDAndFolderID(userID, folderID, limit, offset)
 }
 
 // SearchFilesByUserID searches files for a specific user
