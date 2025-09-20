@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ApolloProvider } from '@apollo/client';
 import { client } from './api/client';
 import { AuthProvider } from './hooks/useAuth';
+import { NotificationProvider } from './hooks/useNotification';
 import QueryProvider from './providers/QueryProvider';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -14,14 +15,17 @@ import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import PublicFileViewer from './components/FileShare/PublicFileViewer';
+import GlobalBackground from './components/Background/GlobalBackground';
+import NotificationWrapper from './components/Notification/NotificationWrapper';
 
 function App() {
   return (
     <ApolloProvider client={client}>
       <QueryProvider>
         <AuthProvider>
-          <Router>
-            <div className="min-h-screen bg-gray-50">
+          <NotificationProvider>
+            <Router>
+              <GlobalBackground>
               <Routes>
                 {/* Public routes (no navbar) */}
                 <Route path="/share/:token" element={<PublicFileViewer shareToken={window.location.pathname.split('/')[2]} />} />
@@ -78,8 +82,10 @@ function App() {
                   </>
                 } />
               </Routes>
-            </div>
+              <NotificationWrapper />
+            </GlobalBackground>
           </Router>
+          </NotificationProvider>
         </AuthProvider>
       </QueryProvider>
     </ApolloProvider>
