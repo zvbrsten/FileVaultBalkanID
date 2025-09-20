@@ -19,9 +19,9 @@ type SimpleGraphQLServer struct {
 }
 
 // NewSimpleGraphQLServer creates a new simple GraphQL server
-func NewSimpleGraphQLServer(authService *services.AuthService, fileService *services.FileService, searchService *services.SearchService, adminService *services.AdminService, fileShareService *services.FileShareService) *SimpleGraphQLServer {
+func NewSimpleGraphQLServer(authService *services.AuthService, fileService *services.FileService, searchService *services.SearchService, adminService *services.AdminService, fileShareService *services.FileShareService, folderService *services.FolderService) *SimpleGraphQLServer {
 	return &SimpleGraphQLServer{
-		resolver: NewResolver(authService, fileService, searchService, adminService, fileShareService),
+		resolver: NewResolver(authService, fileService, searchService, adminService, fileShareService, folderService),
 	}
 }
 
@@ -107,9 +107,13 @@ func (s *SimpleGraphQLServer) HandleGraphQL(c *gin.Context) {
 func (s *SimpleGraphQLServer) executeQuery(doc *ast.QueryDocument, variables map[string]interface{}, c *gin.Context, ctx context.Context) (interface{}, error) {
 	result := make(map[string]interface{})
 
-	for _, op := range doc.Operations {
+	fmt.Printf("DEBUG: Document has %d operations\n", len(doc.Operations))
+	for i, op := range doc.Operations {
+		fmt.Printf("DEBUG: Operation %d: type=%s, name=%s\n", i, op.Operation, op.Name)
+		fmt.Printf("DEBUG: Processing operation type: %s\n", op.Operation)
 		switch op.Operation {
 		case ast.Query:
+			fmt.Printf("DEBUG: Executing query operation\n")
 			queryResult, err := s.executeQueryOperation(op, variables, c, ctx)
 			if err != nil {
 				return nil, err
@@ -118,6 +122,7 @@ func (s *SimpleGraphQLServer) executeQuery(doc *ast.QueryDocument, variables map
 				result[k] = v
 			}
 		case ast.Mutation:
+			fmt.Printf("DEBUG: Executing mutation operation\n")
 			mutationResult, err := s.executeMutationOperation(op, variables, c, ctx)
 			if err != nil {
 				return nil, err
@@ -285,6 +290,31 @@ func (s *SimpleGraphQLServer) executeQueryOperation(op *ast.OperationDefinition,
 					continue
 				}
 				result["fileShareStats"] = stats
+			case "folders":
+				folders, err := s.resolver.Folders(ctx)
+				if err != nil {
+					result["folders"] = []interface{}{}
+					continue
+				}
+				result["folders"] = folders
+			case "folder":
+				folder, err := s.resolver.Folder(ctx,
+					getString(variables, "id"))
+				if err != nil {
+					result["folder"] = nil
+					continue
+				}
+				result["folder"] = folder
+			case "filesByFolder":
+				files, err := s.resolver.FilesByFolder(ctx,
+					getString(variables, "folderId"),
+					getInt(variables, "limit"),
+					getInt(variables, "offset"))
+				if err != nil {
+					result["filesByFolder"] = []interface{}{}
+					continue
+				}
+				result["filesByFolder"] = files
 			}
 		}
 	}
@@ -319,18 +349,32 @@ func (s *SimpleGraphQLServer) executeMutationOperation(op *ast.OperationDefiniti
 					}
 				}
 			case "loginUser":
+				fmt.Printf("DEBUG: Processing loginUser mutation\n")
 				if email, ok := variables["email"]; ok {
+					fmt.Printf("DEBUG: Email found in variables: %v\n", email)
 					if password, ok := variables["password"]; ok {
+						fmt.Printf("DEBUG: Password found in variables\n")
 						if emailStr, ok := email.(string); ok {
 							if passwordStr, ok := password.(string); ok {
+								fmt.Printf("DEBUG: Calling LoginUser resolver with email: %s\n", emailStr)
 								authPayload, err := s.resolver.LoginUser(ctx, emailStr, passwordStr)
 								if err != nil {
+									fmt.Printf("ERROR: LoginUser resolver failed: %v\n", err)
 									return nil, err
 								}
+								fmt.Printf("DEBUG: LoginUser resolver successful, setting result\n")
 								result["loginUser"] = authPayload
+							} else {
+								fmt.Printf("ERROR: Password is not a string: %T\n", password)
 							}
+						} else {
+							fmt.Printf("ERROR: Email is not a string: %T\n", email)
 						}
+					} else {
+						fmt.Printf("ERROR: Password not found in variables\n")
 					}
+				} else {
+					fmt.Printf("ERROR: Email not found in variables\n")
 				}
 			// uploadFile mutation removed - will be rebuilt later
 			case "deleteFile":
@@ -417,6 +461,44 @@ func (s *SimpleGraphQLServer) executeMutationOperation(op *ast.OperationDefiniti
 							continue
 						}
 						result["deleteFileShare"] = success
+					}
+				}
+			case "createFolder":
+				if name, ok := variables["name"]; ok {
+					if nameStr, ok := name.(string); ok {
+						parentID := getStringPtr(variables, "parentId")
+						folder, err := s.resolver.CreateFolder(ctx, nameStr, parentID)
+						if err != nil {
+							result["createFolder"] = nil
+							continue
+						}
+						result["createFolder"] = folder
+					}
+				}
+			case "updateFolder":
+				if id, ok := variables["id"]; ok {
+					if idStr, ok := id.(string); ok {
+						if name, ok := variables["name"]; ok {
+							if nameStr, ok := name.(string); ok {
+								folder, err := s.resolver.UpdateFolder(ctx, idStr, nameStr)
+								if err != nil {
+									result["updateFolder"] = nil
+									continue
+								}
+								result["updateFolder"] = folder
+							}
+						}
+					}
+				}
+			case "deleteFolder":
+				if id, ok := variables["id"]; ok {
+					if idStr, ok := id.(string); ok {
+						success, err := s.resolver.DeleteFolder(ctx, idStr)
+						if err != nil {
+							result["deleteFolder"] = false
+							continue
+						}
+						result["deleteFolder"] = success
 					}
 				}
 			}

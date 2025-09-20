@@ -21,16 +21,18 @@ type Resolver struct {
 	SearchService    *services.SearchService
 	AdminService     *services.AdminService
 	FileShareService *services.FileShareService
+	FolderService    *services.FolderService
 }
 
 // NewResolver creates a new GraphQL resolver with all required services
-func NewResolver(authService *services.AuthService, fileService *services.FileService, searchService *services.SearchService, adminService *services.AdminService, fileShareService *services.FileShareService) *Resolver {
+func NewResolver(authService *services.AuthService, fileService *services.FileService, searchService *services.SearchService, adminService *services.AdminService, fileShareService *services.FileShareService, folderService *services.FolderService) *Resolver {
 	return &Resolver{
 		AuthService:      authService,
 		FileService:      fileService,
 		SearchService:    searchService,
 		AdminService:     adminService,
 		FileShareService: fileShareService,
+		FolderService:    folderService,
 	}
 }
 
@@ -50,8 +52,10 @@ func (r *Resolver) Me(ctx context.Context) (*models.User, error) {
 
 // Files returns files for the current user
 func (r *Resolver) Files(ctx context.Context, limit *int, offset *int) ([]*models.File, error) {
+	fmt.Printf("=== GRAPHQL FILES QUERY DEBUG START ===\n")
 	user, err := r.getCurrentUser(ctx)
 	if err != nil {
+		fmt.Printf("ERROR: User not authenticated: %v\n", err)
 		return nil, err
 	}
 
@@ -65,8 +69,54 @@ func (r *Resolver) Files(ctx context.Context, limit *int, offset *int) ([]*model
 		offsetVal = *offset
 	}
 
+	fmt.Printf("DEBUG: Getting files for user: %s, limit: %d, offset: %d\n", user.ID, limitVal, offsetVal)
+
 	// Get files for the user
-	return r.FileService.GetFilesByUserID(user.ID, limitVal, offsetVal)
+	files, err := r.FileService.GetFilesByUserID(user.ID, limitVal, offsetVal)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to get files: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("SUCCESS: Retrieved %d files\n", len(files))
+	fmt.Printf("=== GRAPHQL FILES QUERY DEBUG END ===\n")
+	return files, nil
+}
+
+// FilesByFolder returns files in a specific folder for the current user
+func (r *Resolver) FilesByFolder(ctx context.Context, folderID string, limit *int, offset *int) ([]*models.File, error) {
+	fmt.Printf("=== GRAPHQL FILES BY FOLDER QUERY DEBUG START ===\n")
+	user, err := r.getCurrentUser(ctx)
+	if err != nil {
+		fmt.Printf("ERROR: User not authenticated: %v\n", err)
+		return nil, err
+	}
+
+	folderUUID, err := uuid.Parse(folderID)
+	if err != nil {
+		fmt.Printf("ERROR: Invalid folder ID: %s\n", folderID)
+		return nil, fmt.Errorf("invalid folder ID")
+	}
+
+	limitVal := 10
+	offsetVal := 0
+
+	if limit != nil {
+		limitVal = *limit
+	}
+	if offset != nil {
+		offsetVal = *offset
+	}
+
+	fmt.Printf("DEBUG: Getting files for user: %s in folder: %s\n", user.ID, folderUUID)
+	files, err := r.FileService.GetFilesByFolderID(user.ID, folderUUID, limitVal, offsetVal)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to get files by folder: %v\n", err)
+		return nil, err
+	}
+	fmt.Printf("SUCCESS: Retrieved %d files from folder\n", len(files))
+	fmt.Printf("=== GRAPHQL FILES BY FOLDER QUERY DEBUG END ===\n")
+	return files, nil
 }
 
 // File returns a specific file by ID
@@ -156,10 +206,17 @@ func (r *Resolver) RegisterUser(ctx context.Context, email string, username stri
 
 // LoginUser authenticates a user
 func (r *Resolver) LoginUser(ctx context.Context, email string, password string) (*models.AuthPayload, error) {
+	fmt.Printf("=== LOGIN USER DEBUG START ===\n")
+	fmt.Printf("DEBUG: LoginUser called with email: %s\n", email)
+
 	token, user, err := r.AuthService.LoginUser(email, password)
 	if err != nil {
+		fmt.Printf("ERROR: LoginUser failed: %v\n", err)
 		return nil, err
 	}
+
+	fmt.Printf("SUCCESS: LoginUser successful, token: %s, user: %+v\n", token[:20]+"...", user)
+	fmt.Printf("=== LOGIN USER DEBUG END ===\n")
 
 	return &models.AuthPayload{
 		Token: token,
@@ -570,5 +627,155 @@ func (r *Resolver) DeleteFileShare(ctx context.Context, shareID string) (bool, e
 		return false, err
 	}
 
+	return true, nil
+}
+
+// Folders returns all folders for the current user
+func (r *Resolver) Folders(ctx context.Context) ([]*models.Folder, error) {
+	fmt.Printf("=== GRAPHQL FOLDERS QUERY DEBUG START ===\n")
+
+	user, err := r.getCurrentUser(ctx)
+	if err != nil {
+		fmt.Printf("ERROR: User not authenticated: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("DEBUG: Getting folders for user: %s\n", user.ID)
+
+	folders, err := r.FolderService.GetUserFolders(user.ID)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to get user folders: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("SUCCESS: Retrieved %d folders\n", len(folders))
+	fmt.Printf("=== GRAPHQL FOLDERS QUERY DEBUG END ===\n")
+	return folders, nil
+}
+
+// Folder returns a specific folder by ID
+func (r *Resolver) Folder(ctx context.Context, id string) (*models.Folder, error) {
+	fmt.Printf("=== GRAPHQL FOLDER QUERY DEBUG START ===\n")
+
+	user, err := r.getCurrentUser(ctx)
+	if err != nil {
+		fmt.Printf("ERROR: User not authenticated: %v\n", err)
+		return nil, err
+	}
+
+	folderUUID, err := uuid.Parse(id)
+	if err != nil {
+		fmt.Printf("ERROR: Invalid folder ID: %s\n", id)
+		return nil, fmt.Errorf("invalid folder ID")
+	}
+
+	fmt.Printf("DEBUG: Getting folder %s for user: %s\n", folderUUID, user.ID)
+
+	folder, err := r.FolderService.GetFolderByID(folderUUID, user.ID)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to get folder: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("SUCCESS: Retrieved folder: %+v\n", folder)
+	fmt.Printf("=== GRAPHQL FOLDER QUERY DEBUG END ===\n")
+	return folder, nil
+}
+
+// CreateFolder creates a new folder
+func (r *Resolver) CreateFolder(ctx context.Context, name string, parentID *string) (*models.Folder, error) {
+	fmt.Printf("=== GRAPHQL CREATE FOLDER MUTATION DEBUG START ===\n")
+
+	user, err := r.getCurrentUser(ctx)
+	if err != nil {
+		fmt.Printf("ERROR: User not authenticated: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("DEBUG: Creating folder with name='%s', parentID=%v for user: %s\n", name, parentID, user.ID)
+
+	req := &models.CreateFolderRequest{
+		Name: name,
+	}
+
+	if parentID != nil {
+		parentUUID, err := uuid.Parse(*parentID)
+		if err != nil {
+			fmt.Printf("ERROR: Invalid parent ID: %s\n", *parentID)
+			return nil, fmt.Errorf("invalid parent folder ID")
+		}
+		req.ParentID = &parentUUID
+	}
+
+	folder, err := r.FolderService.CreateFolder(user.ID, req)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to create folder: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("SUCCESS: Created folder: %+v\n", folder)
+	fmt.Printf("=== GRAPHQL CREATE FOLDER MUTATION DEBUG END ===\n")
+	return folder, nil
+}
+
+// UpdateFolder updates an existing folder
+func (r *Resolver) UpdateFolder(ctx context.Context, id string, name string) (*models.Folder, error) {
+	fmt.Printf("=== GRAPHQL UPDATE FOLDER MUTATION DEBUG START ===\n")
+
+	user, err := r.getCurrentUser(ctx)
+	if err != nil {
+		fmt.Printf("ERROR: User not authenticated: %v\n", err)
+		return nil, err
+	}
+
+	folderUUID, err := uuid.Parse(id)
+	if err != nil {
+		fmt.Printf("ERROR: Invalid folder ID: %s\n", id)
+		return nil, fmt.Errorf("invalid folder ID")
+	}
+
+	fmt.Printf("DEBUG: Updating folder %s with name='%s' for user: %s\n", folderUUID, name, user.ID)
+
+	req := &models.UpdateFolderRequest{
+		Name: name,
+	}
+
+	folder, err := r.FolderService.UpdateFolder(folderUUID, user.ID, req)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to update folder: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("SUCCESS: Updated folder: %+v\n", folder)
+	fmt.Printf("=== GRAPHQL UPDATE FOLDER MUTATION DEBUG END ===\n")
+	return folder, nil
+}
+
+// DeleteFolder deletes a folder
+func (r *Resolver) DeleteFolder(ctx context.Context, id string) (bool, error) {
+	fmt.Printf("=== GRAPHQL DELETE FOLDER MUTATION DEBUG START ===\n")
+
+	user, err := r.getCurrentUser(ctx)
+	if err != nil {
+		fmt.Printf("ERROR: User not authenticated: %v\n", err)
+		return false, err
+	}
+
+	folderUUID, err := uuid.Parse(id)
+	if err != nil {
+		fmt.Printf("ERROR: Invalid folder ID: %s\n", id)
+		return false, fmt.Errorf("invalid folder ID")
+	}
+
+	fmt.Printf("DEBUG: Deleting folder %s for user: %s\n", folderUUID, user.ID)
+
+	err = r.FolderService.DeleteFolder(folderUUID, user.ID)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to delete folder: %v\n", err)
+		return false, err
+	}
+
+	fmt.Printf("SUCCESS: Deleted folder\n")
+	fmt.Printf("=== GRAPHQL DELETE FOLDER MUTATION DEBUG END ===\n")
 	return true, nil
 }

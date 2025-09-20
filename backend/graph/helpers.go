@@ -55,3 +55,16 @@ func getString(variables map[string]interface{}, key string) string {
 	}
 	return ""
 }
+
+func getInt(variables map[string]interface{}, key string) *int {
+	if val, ok := variables[key]; ok {
+		if i, ok := val.(int); ok {
+			return &i
+		}
+		if f, ok := val.(float64); ok {
+			i := int(f)
+			return &i
+		}
+	}
+	return nil
+}
