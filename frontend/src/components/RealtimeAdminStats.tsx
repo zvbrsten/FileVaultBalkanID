@@ -12,8 +12,18 @@ interface RealtimeAdminStatsProps {
     storageEfficiency: number;
     activeUsers: number;
     newUsersToday: number;
+    deduplicationStats: DeduplicationStats;
   };
   className?: string;
+}
+
+interface DeduplicationStats {
+  totalFileRecords: number;
+  uniqueFileHashes: number;
+  duplicateRecords: number;
+  storageSaved: number;
+  storageSavedPercent: number;
+  costSavingsUSD: number;
 }
 
 interface SystemStatsUpdate {
@@ -25,6 +35,7 @@ interface SystemStatsUpdate {
   storageEfficiency: number;
   activeUsers: number;
   newUsersToday: number;
+  deduplicationStats: DeduplicationStats;
   timestamp: string;
 }
 
@@ -40,7 +51,15 @@ const RealtimeAdminStats: React.FC<RealtimeAdminStatsProps> = ({
     duplicateFiles: 0,
     storageEfficiency: 0,
     activeUsers: 0,
-    newUsersToday: 0
+    newUsersToday: 0,
+    deduplicationStats: {
+      totalFileRecords: 0,
+      uniqueFileHashes: 0,
+      duplicateRecords: 0,
+      storageSaved: 0,
+      storageSavedPercent: 0,
+      costSavingsUSD: 0
+    }
   });
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -188,6 +207,63 @@ const RealtimeAdminStats: React.FC<RealtimeAdminStatsProps> = ({
             </div>
             <Users className="w-8 h-8 text-blue-500" />
           </div>
+        </div>
+      </div>
+
+      {/* Deduplication Metrics */}
+      <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg shadow-sm border border-green-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <TrendingUp className="w-5 h-5 text-green-600 mr-2" />
+          Storage Deduplication Savings
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex items-center">
+              <FileText className="w-6 h-6 text-blue-500" />
+              <div className="ml-3">
+                <p className="text-xs font-medium text-gray-600">Duplicate Records</p>
+                <p className="text-lg font-bold text-gray-900">{stats.deduplicationStats.duplicateRecords}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex items-center">
+              <HardDrive className="w-6 h-6 text-green-500" />
+              <div className="ml-3">
+                <p className="text-xs font-medium text-gray-600">Storage Saved</p>
+                <p className="text-lg font-bold text-gray-900">{formatBytes(stats.deduplicationStats.storageSaved)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex items-center">
+              <TrendingUp className="w-6 h-6 text-purple-500" />
+              <div className="ml-3">
+                <p className="text-xs font-medium text-gray-600">Efficiency</p>
+                <p className="text-lg font-bold text-gray-900">{stats.deduplicationStats.storageSavedPercent.toFixed(1)}%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex items-center">
+              <Activity className="w-6 h-6 text-orange-500" />
+              <div className="ml-3">
+                <p className="text-xs font-medium text-gray-600">Cost Savings</p>
+                <p className="text-lg font-bold text-gray-900">${stats.deduplicationStats.costSavingsUSD.toFixed(2)}/mo</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-3 bg-white rounded-lg">
+          <p className="text-sm text-gray-600">
+            <strong>{stats.deduplicationStats.duplicateRecords}</strong> duplicate file records detected across 
+            <strong> {stats.deduplicationStats.totalFileRecords}</strong> total files, saving 
+            <strong> {formatBytes(stats.deduplicationStats.storageSaved)}</strong> in storage costs.
+          </p>
         </div>
       </div>
 
