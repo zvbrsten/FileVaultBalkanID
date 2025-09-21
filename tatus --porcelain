@@ -1,0 +1,37 @@
+warning: in the working copy of 'backend/internal/repositories/file_hash_repository.go', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/internal/services/statistics_service.go', LF will be replaced by CRLF the next time Git touches it
+backend/cmd/test_admin/main.go
+backend/cmd/test_file_sharing/main.go
+backend/cmd/test_graphql/main.go
+backend/cmd/test_search/main.go
+backend/gqlgen.yml
+backend/graph/helpers.go
+backend/internal/handlers/file_share_handler.go
+backend/internal/models/file_share.go
+backend/internal/repositories/file_share_repository.go
+backend/internal/services/admin_service.go
+backend/internal/services/file_share_service.go
+backend/internal/services/search_service.go
+backend/migrations/004_create_file_shares_table.sql
+backend/migrations/005_create_admin_logs_table.sql
+frontend/README.md
+frontend/env.example
+frontend/package.json
+frontend/postcss.config.js
+frontend/public/index.html
+frontend/public/manifest.json
+frontend/src/App.tsx
+frontend/src/components/Navbar.tsx
+frontend/src/components/ProtectedRoute.tsx
+frontend/src/index.css
+frontend/src/index.tsx
+frontend/src/pages/AdminPage.tsx
+frontend/src/pages/DashboardPage.tsx
+frontend/src/pages/FilesPage.tsx
+frontend/src/pages/LoginPage.tsx
+frontend/src/pages/SearchPage.tsx
+frontend/src/pages/SignupPage.tsx
+frontend/src/pages/UploadPage.tsx
+frontend/src/providers/AuthProvider.tsx
+frontend/tailwind.config.js
+frontend/tsconfig.json
