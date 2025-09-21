@@ -20,6 +20,16 @@ const SimpleUploadZone: React.FC<SimpleUploadZoneProps> = ({
   const [isDragActive, setIsDragActive] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
+    console.log('=== SIMPLE UPLOAD ZONE DEBUG ===');
+    console.log('Files dropped:', acceptedFiles.length);
+    acceptedFiles.forEach((file, index) => {
+      console.log(`Dropped file ${index + 1}:`, {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+    });
+    console.log('Calling onFilesSelected with:', acceptedFiles);
     onFilesSelected(acceptedFiles);
   }, [onFilesSelected]);
 
@@ -74,14 +84,14 @@ const SimpleUploadZone: React.FC<SimpleUploadZoneProps> = ({
               {isDragActive ? 'Drop files here' : 'Upload your files'}
             </h3>
             
-            <p className="text-cream-600 mb-6 max-w-md mx-auto">
+            <p className="text-cream-700 mb-6 max-w-md mx-auto">
               {isDragActive 
                 ? 'Release to upload your files' 
                 : 'Drag and drop files here, or click to browse'
               }
             </p>
 
-            <div className="flex items-center justify-center space-x-8 text-sm text-cream-600 mb-6">
+            <div className="flex items-center justify-center space-x-8 text-sm text-cream-700 mb-6">
               <div className="flex items-center space-x-2">
                 <i className="pi pi-shield text-orange" style={{ fontSize: '1.25rem' }}></i>
                 <span>Secure</span>
@@ -101,9 +111,7 @@ const SimpleUploadZone: React.FC<SimpleUploadZoneProps> = ({
               Choose Files
             </Button>
 
-            <p className="text-xs text-cream-500">
-              Max {maxFiles} files, {formatBytes(maxSize)} each
-            </p>
+            
           </div>
         </div>
       </CardContent>

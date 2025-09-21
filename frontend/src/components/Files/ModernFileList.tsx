@@ -40,7 +40,6 @@ interface File {
   updatedAt: string;
   isShared?: boolean;
   downloadCount?: number;
-  isDuplicate?: boolean;
 }
 
 interface ModernFileListProps {
@@ -177,12 +176,6 @@ const ModernFileList: React.FC<ModernFileListProps> = ({
               )}
             </div>
 
-            {file.isDuplicate && (
-              <Badge variant="warning" className="text-xs">
-                <Copy className="w-3 h-3 mr-1" />
-                Duplicate
-              </Badge>
-            )}
 
             {file.downloadCount && file.downloadCount > 0 && (
               <div className="flex items-center space-x-2 text-sm text-white/60">

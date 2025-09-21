@@ -51,7 +51,7 @@ const FolderSelector: React.FC<FolderSelectorProps> = ({
     <div className="space-y-4">
       <div>
         <Label className="text-cream-800 font-medium">Upload to Folder</Label>
-        <p className="text-sm text-cream-600 mt-1">
+        <p className="text-sm text-cream-700 mt-1">
           Select a folder to upload files to, or create a new one
         </p>
       </div>
@@ -83,7 +83,7 @@ const FolderSelector: React.FC<FolderSelectorProps> = ({
             >
               <i className="pi pi-folder text-orange mr-2" style={{ fontSize: '1rem' }}></i>
               {folder.name}
-              <span className="ml-auto text-xs text-cream-600">
+              <span className="ml-auto text-xs text-cream-700">
                 {folder.fileCount} files
               </span>
             </Button>

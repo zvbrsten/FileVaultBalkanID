@@ -28,6 +28,10 @@ const UploadProgressModal: React.FC<UploadProgressModalProps> = ({
   onCancelUpload,
   onClearAll
 }) => {
+  console.log('=== UPLOAD PROGRESS MODAL DEBUG ===');
+  console.log('Modal isOpen:', isOpen);
+  console.log('Upload files:', uploadFiles);
+  console.log('Number of files:', uploadFiles.length);
   const getFileIcon = (file: File) => {
     const mimeType = file.type;
     if (mimeType.startsWith('image/')) return <i className="pi pi-image text-orange" style={{ fontSize: '1rem' }}></i>;

@@ -57,7 +57,19 @@ const FolderList: React.FC<FolderListProps> = ({ onFileSelect, refetchFiles }) =
   });
 
   const folders = foldersData?.folders || [];
-  const files = filesData?.filesByFolder || [];
+  
+  // Get unique files based on hash to avoid showing duplicates
+  const files = React.useMemo(() => {
+    const allFiles = filesData?.filesByFolder || [];
+    const seen = new Set();
+    return allFiles.filter((file: FileItem) => {
+      if (seen.has(file.hash)) {
+        return false; // Skip duplicates
+      }
+      seen.add(file.hash);
+      return true;
+    });
+  }, [filesData?.filesByFolder]);
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) return <Image className="w-4 h-4 text-green-500" />;

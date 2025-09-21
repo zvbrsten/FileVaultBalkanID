@@ -1,15 +1,10 @@
 import React, { useState } from 'react';
-import { Download, Trash2, File, FileText, Image, Video, Music, Archive, Calendar, Hash, Eye } from 'lucide-react';
+import { Download, Trash2, File, FileText, Image, Video, Music, Archive } from 'lucide-react';
 import { useQuery, useMutation } from '@apollo/client';
 import { FILES_QUERY, DELETE_FILE } from '../../api/queries';
-import ShareButton from '../FileShare/ShareButton';
 import FilePreview from '../FilePreview/FilePreview';
-import BulkOperations from '../BulkOperations/BulkOperations';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Checkbox } from '../ui/checkbox';
-// import { cn } from '../../lib/utils';
 import { useNotification } from '../../hooks/useNotification';
 
 interface FileItem {
@@ -31,13 +26,15 @@ interface FileListProps {
   showBulkOperations?: boolean;
   onBulkDelete?: (fileIds: string[]) => void;
   onBulkMove?: (fileIds: string[], folderId: string) => void;
+  refetchFiles?: () => void;
 }
 
 const FileList: React.FC<FileListProps> = ({ 
   onFileSelect, 
   showBulkOperations = true,
   onBulkDelete,
-  onBulkMove 
+  onBulkMove,
+  refetchFiles
 }) => {
   const { addNotification } = useNotification();
   const { data, loading, error, refetch } = useQuery(FILES_QUERY, {
@@ -46,13 +43,22 @@ const FileList: React.FC<FileListProps> = ({
   });
 
   const [deleteFileMutation] = useMutation(DELETE_FILE);
-  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  // Filter out files that have a folderId (they should be shown in FolderList instead)
-  const allFiles = data?.files || [];
-  const files = allFiles.filter((file: FileItem) => !file.folderId);
+  // Filter out files that have a folderId and get unique files based on hash
+  const files = React.useMemo(() => {
+    const allFiles = data?.files || [];
+    const filesWithoutFolders = allFiles.filter((file: FileItem) => !file.folderId);
+    const seen = new Set();
+    return filesWithoutFolders.filter((file: FileItem) => {
+      if (seen.has(file.hash)) {
+        return false; // Skip duplicates
+      }
+      seen.add(file.hash);
+      return true;
+    });
+  }, [data?.files]);
 
   const deleteFile = async (fileId: string) => {
     try {
@@ -66,6 +72,9 @@ const FileList: React.FC<FileListProps> = ({
         duration: 3000
       });
       refetch();
+      if (refetchFiles) {
+        refetchFiles();
+      }
     } catch (err) {
       addNotification({
         type: 'error',
@@ -147,44 +156,12 @@ const FileList: React.FC<FileListProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString();
-  };
-
-  const handleFileSelect = (fileId: string, checked: boolean) => {
-    const newSelected = new Set(selectedFiles);
-    if (checked) {
-      newSelected.add(fileId);
-    } else {
-      newSelected.delete(fileId);
-    }
-    setSelectedFiles(newSelected);
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedFiles(new Set(files.map((file: FileItem) => file.id)));
-    } else {
-      setSelectedFiles(new Set());
-    }
-  };
 
   const handlePreview = (file: FileItem) => {
     setPreviewFile(file);
     setIsPreviewOpen(true);
   };
 
-  const handleBulkDelete = (deletedFileIds: string[]) => {
-    // Remove deleted files from the current list
-    setSelectedFiles(new Set());
-    refetch(); // Refresh the file list
-  };
-
-  const handleBulkMove = (movedFileIds: string[], targetFolderId: string) => {
-    // Handle bulk move (this would require backend implementation)
-    setSelectedFiles(new Set());
-    refetch(); // Refresh the file list
-  };
 
   if (loading) {
     return (
@@ -211,9 +188,9 @@ const FileList: React.FC<FileListProps> = ({
     return (
       <Card>
         <CardContent className="text-center py-12">
-          <File className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">No files without folders</h3>
-          <p className="text-muted-foreground">All your files are organized in folders, or you haven't uploaded any files yet.</p>
+          <File className="mx-auto h-12 w-12 text-cream-500 mb-4" />
+          <h3 className="text-lg font-medium mb-2 text-cream-800">No files in root</h3>
+          <p className="text-cream-600">All your files are organized in folders, or you haven't uploaded any files yet.</p>
         </CardContent>
       </Card>
     );
@@ -221,21 +198,12 @@ const FileList: React.FC<FileListProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Bulk Operations */}
-      <BulkOperations
-        selectedFiles={selectedFiles}
-        files={files}
-        onSelectionChange={setSelectedFiles}
-        onFilesDeleted={handleBulkDelete}
-        onFilesMoved={handleBulkMove}
-      />
-
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center space-x-2">
               <File className="w-5 h-5" />
-              <span>Files Without Folders ({files.length})</span>
+              <span>Root ({files.length})</span>
             </CardTitle>
             <div className="flex items-center space-x-2">
               <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -245,117 +213,60 @@ const FileList: React.FC<FileListProps> = ({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-hidden">
-            <table className="min-w-full divide-y divide-border">
-              <thead className="bg-muted/50">
-                <tr>
-                  {showBulkOperations && (
-                    <th className="px-4 py-3 text-left">
-                      <Checkbox
-                        checked={selectedFiles.size === files.length && files.length > 0}
-                        onCheckedChange={handleSelectAll}
-                      />
-                    </th>
-                  )}
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    File
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Size
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Uploaded
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {files.map((file: FileItem) => (
-                  <tr key={file.id} className="hover:bg-muted/50 transition-colors">
-                    {showBulkOperations && (
-                      <td className="px-4 py-3">
-                        <Checkbox
-                          checked={selectedFiles.has(file.id)}
-                          onCheckedChange={(checked) => handleFileSelect(file.id, checked as boolean)}
-                        />
-                      </td>
-                    )}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-3">
-                        {getFileIcon(file.mimeType)}
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">
-                            {file.originalName}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {file.mimeType}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {files.map((file: FileItem) => (
+              <div
+                key={file.id}
+                className="group relative bg-cream-50 border border-cream-200 rounded-lg p-4 hover:bg-cream-100 hover:border-forest-green transition-all duration-200 cursor-pointer"
+                onClick={() => handlePreview(file)}
+              >
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="w-12 h-12 flex items-center justify-center bg-forest-green/10 rounded-lg">
+                    {getFileIcon(file.mimeType)}
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-cream-600 truncate w-full" title={file.originalName}>
+                      {file.originalName.length > 15 
+                        ? file.originalName.substring(0, 15) + '...' 
+                        : file.originalName}
+                    </div>
+                    <div className="text-xs text-cream-500 mt-1">
                       {formatFileSize(file.size)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={file.isDuplicate ? "secondary" : "default"}>
-                        {file.isDuplicate ? (
-                          <div className="flex items-center space-x-1">
-                            <Hash className="w-3 h-3" />
-                            <span>Duplicate</span>
-                          </div>
-                        ) : (
-                          "Original"
-                        )}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="w-3 h-3" />
-                        <span>{formatDate(file.createdAt)}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handlePreview(file)}
-                          title="Preview"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => downloadFile(file.id, file.originalName)}
-                          title="Download"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        <ShareButton 
-                          file={file}
-                          className="!px-2 !py-1 !text-xs"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteFile(file.id)}
-                          title="Delete"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Quick action buttons on hover */}
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex space-x-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 bg-white/80 hover:bg-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadFile(file.id, file.originalName);
+                      }}
+                      title="Download"
+                    >
+                      <Download className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 bg-white/80 hover:bg-white text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteFile(file.id);
+                      }}
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
