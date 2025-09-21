@@ -15,7 +15,7 @@ const buttonVariants = cva(
           "border border-cream-300 bg-cream-50 text-cream-800 hover:bg-cream-100",
         secondary:
           "bg-cream-100 text-cream-800 hover:bg-cream-200",
-        ghost: "text-cream-700 hover:bg-cream-100",
+        ghost: "text-cream-800 hover:bg-cream-100",
         link: "text-forest-green underline-offset-4 hover:underline",
         gradient: "bg-gradient-to-r from-forest-green to-orange text-white hover:from-forest-green-hover hover:to-orange-hover shadow-sm hover:shadow-md",
         glass: "bg-cream-50/90 backdrop-blur-sm border border-cream-200 text-cream-800 hover:bg-cream-50 hover:shadow-sm",
