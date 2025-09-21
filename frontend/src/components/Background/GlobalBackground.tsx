@@ -1,4 +1,5 @@
 import React from 'react';
+import Iridescence from './Iridescence';
 
 interface GlobalBackgroundProps {
   children: React.ReactNode;
@@ -7,17 +8,19 @@ interface GlobalBackgroundProps {
 
 const GlobalBackground: React.FC<GlobalBackgroundProps> = ({ children, className = '' }) => {
   return (
-    <div className={`relative min-h-screen bg-background transition-colors duration-300 ${className}`}>
-      {/* Theme-aware Background */}
+    <div className={`relative min-h-screen ${className}`}>
+      {/* Iridescence Background */}
       <div className="fixed inset-0 z-0">
-        {/* Dark theme background */}
-        <div className="dark-theme-bg absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
-        {/* Light theme background */}
-        <div className="light-theme-bg absolute inset-0 bg-gradient-to-br from-[#FEFEF8] via-[#FDFCF5] to-[#F2E8D9]" />
+        <Iridescence
+          color={[0.2, 0.4, 0.8]} // Blue-ish color
+          mouseReact={true}
+          amplitude={0.1}
+          speed={0.8}
+        />
       </div>
       
-      {/* Content Overlay */}
-      <div className="relative z-10">
+      {/* Content Overlay with better centering */}
+      <div className="relative z-10 flex flex-col min-h-screen">
         {children}
       </div>
     </div>

@@ -5,17 +5,16 @@ import { client } from './api/client';
 import { AuthProvider } from './hooks/useAuth';
 import { NotificationProvider } from './hooks/useNotification';
 import { useRealtimeNotifications } from './hooks/useRealtimeNotifications';
-import { ThemeProvider } from './contexts/ThemeContext';
 import QueryProvider from './providers/QueryProvider';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-import DashboardPage from './pages/DashboardPage';
-import UploadPage from './pages/UploadPage';
+import DashboardPageNew from './pages/DashboardPageNew';
+import UploadPageNew from './pages/UploadPageNew';
 import FilesPage from './pages/FilesPage';
 import SearchPage from './pages/SearchPage';
 import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/ProtectedRoute';
-import Navbar from './components/Navbar';
+import ModernNavbar from './components/Navigation/ModernNavbar';
 import PublicFileViewer from './components/FileShare/PublicFileViewer';
 import GlobalBackground from './components/Background/GlobalBackground';
 import NotificationWrapper from './components/Notification/NotificationWrapper';
@@ -30,12 +29,11 @@ function App() {
   return (
     <ApolloProvider client={client}>
       <QueryProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <NotificationProvider>
-              <RealtimeNotificationsWrapper />
-              <Router>
-                <GlobalBackground>
+        <AuthProvider>
+          <NotificationProvider>
+            <RealtimeNotificationsWrapper />
+            <Router>
+              <GlobalBackground>
               <Routes>
                 {/* Public routes (no navbar) */}
                 <Route path="/share/:token" element={<PublicFileViewer shareToken={window.location.pathname.split('/')[2]} />} />
@@ -43,7 +41,7 @@ function App() {
                 {/* All other routes (with navbar) */}
                 <Route path="/*" element={
                   <>
-                    <Navbar />
+                    <ModernNavbar />
                     <Routes>
                       <Route path="/login" element={<LoginPage />} />
                       <Route path="/signup" element={<SignupPage />} />
@@ -51,7 +49,7 @@ function App() {
                         path="/dashboard" 
                         element={
                           <ProtectedRoute>
-                            <DashboardPage />
+                            <DashboardPageNew />
                           </ProtectedRoute>
                         } 
                       />
@@ -59,7 +57,7 @@ function App() {
                         path="/upload" 
                         element={
                           <ProtectedRoute>
-                            <UploadPage />
+                            <UploadPageNew />
                           </ProtectedRoute>
                         } 
                       />
@@ -97,18 +95,9 @@ function App() {
           </Router>
           </NotificationProvider>
         </AuthProvider>
-        </ThemeProvider>
       </QueryProvider>
     </ApolloProvider>
   );
 }
 
 export default App;
-
-
-
-
-
-
-
-
