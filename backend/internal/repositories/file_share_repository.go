@@ -122,7 +122,7 @@ func (r *FileShareRepository) GetByTokenWithFile(token string) (*models.FileShar
 		SELECT fs.id, fs.file_id, fs.share_token, fs.is_active, fs.expires_at, 
 		       fs.download_count, fs.max_downloads, fs.created_at, fs.updated_at,
 		       f.id, f.original_name, f.filename, f.size, f.mime_type, 
-		       f.hash, f.s3_key, f.uploader_id, f.is_duplicate, f.created_at, f.updated_at
+		       f.hash, f.s3_key, f.uploader_id, f.created_at, f.updated_at
 		FROM file_shares fs
 		JOIN files f ON fs.file_id = f.id
 		WHERE fs.share_token = $1
@@ -150,7 +150,6 @@ func (r *FileShareRepository) GetByTokenWithFile(token string) (*models.FileShar
 		&file.Hash,
 		&s3Key,
 		&file.UploaderID,
-		&file.IsDuplicate,
 		&file.CreatedAt,
 		&file.UpdatedAt,
 	)

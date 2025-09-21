@@ -61,6 +61,7 @@ func Migrate(databaseURL string) error {
 		"017_restore_folder_id_to_files.sql",
 		"019_fix_null_folder_paths.sql",
 		"020_add_folder_file_count_triggers.sql",
+		"021_remove_is_duplicate_column.sql",
 	}
 
 	for _, filename := range migrationFiles {

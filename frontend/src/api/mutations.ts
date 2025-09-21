@@ -41,7 +41,6 @@ export const UPLOAD_FILE = gql`
       mimeType
       size
       hash
-      isDuplicate
       uploaderId
       folderId
       uploader {

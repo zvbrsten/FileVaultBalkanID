@@ -12,7 +12,7 @@ import DashboardPageNew from './pages/DashboardPageNew';
 import UploadPageNew from './pages/UploadPageNew';
 import FilesPage from './pages/FilesPage';
 import SearchPage from './pages/SearchPage';
-import AdminPage from './pages/AdminPage';
+import AdminPageNew from './pages/AdminPageNew';
 import ProtectedRoute from './components/ProtectedRoute';
 import ModernNavbar from './components/Navigation/ModernNavbar';
 import PublicFileViewer from './components/FileShare/PublicFileViewer';
@@ -81,7 +81,7 @@ function App() {
                         path="/admin" 
                         element={
                           <ProtectedRoute>
-                            <AdminPage />
+                            <AdminPageNew />
                           </ProtectedRoute>
                         } 
                       />
