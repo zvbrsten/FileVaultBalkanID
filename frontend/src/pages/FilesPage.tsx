@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { useQuery } from '@apollo/client';
@@ -13,12 +13,12 @@ const FilesPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<any>(null);
 
   // Set up queries with polling for real-time updates
-  const { data: foldersData, refetch: refetchFolders } = useQuery(GET_FOLDERS, {
+  const { refetch: refetchFolders } = useQuery(GET_FOLDERS, {
     pollInterval: 5000, // Poll every 5 seconds
     errorPolicy: 'all'
   });
   
-  const { data: filesData, refetch: refetchFiles } = useQuery(FILES_QUERY, {
+  const { refetch: refetchFiles } = useQuery(FILES_QUERY, {
     variables: { limit: 100, offset: 0 },
     pollInterval: 5000, // Poll every 5 seconds
     errorPolicy: 'all'
@@ -149,3 +149,4 @@ const FilesPage: React.FC = () => {
 };
 
 export default FilesPage;
+

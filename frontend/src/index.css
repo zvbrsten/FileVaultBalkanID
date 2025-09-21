@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    /* Dark theme (default) */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
@@ -26,26 +27,27 @@
     --radius: 0.5rem;
   }
 
-  .light {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+  [data-theme="light"] {
+    /* Light theme with improved contrast and readability */
+    --background: 60 100% 98%; /* Very light cream - #FEFEF8 */
+    --foreground: 20 15% 20%; /* Dark brown for excellent text contrast - #3A342E */
+    --card: 60 100% 97%; /* Light cream - #FDFCF5 */
+    --card-foreground: 20 15% 20%; /* Dark brown for text */
+    --popover: 60 100% 97%; /* Light cream */
+    --popover-foreground: 20 15% 20%; /* Dark brown for text */
+    --primary: 25 85% 45%; /* Rich warm brown - #8B4513 */
+    --primary-foreground: 60 100% 98%; /* Very light cream for primary text */
+    --secondary: 45 30% 88%; /* Light warm beige - #E6D7C3 */
+    --secondary-foreground: 20 15% 20%; /* Dark brown for text */
+    --muted: 45 25% 92%; /* Very light beige - #F2E8D9 */
+    --muted-foreground: 25 20% 45%; /* Medium warm brown - #8B7355 */
+    --accent: 35 60% 70%; /* Warm golden - #D4A574 */
+    --accent-foreground: 20 15% 20%; /* Dark brown for text */
+    --destructive: 0 70% 55%; /* Warm red - #D2691E */
+    --destructive-foreground: 60 100% 98%; /* Very light cream */
+    --border: 45 30% 88%; /* Light warm beige for borders */
+    --input: 45 25% 92%; /* Very light beige for inputs */
+    --ring: 25 85% 45%; /* Rich warm brown for focus rings */
   }
 }
 
@@ -61,8 +63,27 @@
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
     min-height: 100vh;
+    transition: background-color 0.3s ease;
+  }
+
+  /* Dark theme background */
+  [data-theme="dark"] body {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+  }
+
+  /* Light theme background */
+  [data-theme="light"] body {
+    background: linear-gradient(135deg, #FEFEF8 0%, #FDFCF5 50%, #F2E8D9 100%);
+  }
+
+  /* Theme-aware background controls */
+  [data-theme="dark"] .light-theme-bg {
+    display: none;
+  }
+
+  [data-theme="light"] .dark-theme-bg {
+    display: none;
   }
 
   code {
@@ -127,6 +148,119 @@
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
+
+  /* Theme-aware glass effects */
+  [data-theme="light"] .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(139, 69, 19, 0.2);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  [data-theme="light"] .glass-dark {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(139, 69, 19, 0.3);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Navbar theme-aware colors */
+  .navbar-text {
+    color: white;
+    transition: color 0.3s ease;
+  }
+
+  .navbar-text-muted {
+    color: rgba(255, 255, 255, 0.8);
+    transition: color 0.3s ease;
+  }
+
+  .navbar-bg {
+    background: rgba(255, 255, 255, 0.1);
+    transition: background-color 0.3s ease;
+  }
+
+  .navbar-bg-hover {
+    background: rgba(255, 255, 255, 0.1);
+    transition: background-color 0.3s ease;
+  }
+
+  .navbar-bg-hover:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .navbar-border {
+    border-color: rgba(255, 255, 255, 0.2);
+    transition: border-color 0.3s ease;
+  }
+
+  /* Light theme navbar colors */
+  [data-theme="light"] .navbar-text {
+    color: #92400e; /* amber-800 */
+  }
+
+  [data-theme="light"] .navbar-text-muted {
+    color: #a16207; /* amber-700 */
+  }
+
+  [data-theme="light"] .navbar-bg {
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  [data-theme="light"] .navbar-bg-hover {
+    background: rgba(251, 191, 36, 0.1); /* amber-400 with opacity */
+  }
+
+  [data-theme="light"] .navbar-bg-hover:hover {
+    background: rgba(251, 191, 36, 0.2); /* amber-400 with more opacity */
+  }
+
+  [data-theme="light"] .navbar-border {
+    border-color: rgba(251, 191, 36, 0.3); /* amber-400 with opacity */
+  }
+
+  /* Signup button styles */
+  .navbar-signup {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .navbar-signup:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  [data-theme="light"] .navbar-signup {
+    background: rgba(251, 191, 36, 0.2);
+    color: #92400e;
+    border-color: rgba(251, 191, 36, 0.4);
+  }
+
+  [data-theme="light"] .navbar-signup:hover {
+    background: rgba(251, 191, 36, 0.3);
+  }
+
+  /* Logout button styles */
+  .navbar-logout {
+    background: rgba(239, 68, 68, 0.8);
+    color: white;
+    border-color: rgba(239, 68, 68, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .navbar-logout:hover {
+    background: rgba(220, 38, 38, 0.8);
+  }
+
+  [data-theme="light"] .navbar-logout {
+    background: #dc2626;
+    border-color: rgba(220, 38, 38, 0.5);
+  }
+
+  [data-theme="light"] .navbar-logout:hover {
+    background: #b91c1c;
+  }
 }
 
 @keyframes fadeIn {
@@ -177,6 +311,9 @@
     transform: scale(1);
   }
 }
+
+
+
 
 
 

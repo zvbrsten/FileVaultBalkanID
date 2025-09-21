@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
-import Silk from '../Silk/Silk';
-import BackgroundConfig from './BackgroundConfig';
+import React from 'react';
 
 interface GlobalBackgroundProps {
   children: React.ReactNode;
@@ -8,34 +6,20 @@ interface GlobalBackgroundProps {
 }
 
 const GlobalBackground: React.FC<GlobalBackgroundProps> = ({ children, className = '' }) => {
-  const [backgroundConfig, setBackgroundConfig] = useState({
-    speed: 2.5,
-    scale: 1.1,
-    color: '#1e293b',
-    noiseIntensity: 1.0,
-    rotation: 0,
-  });
-
   return (
-    <div className={`relative min-h-screen ${className}`}>
-      {/* Silk Background */}
+    <div className={`relative min-h-screen bg-background transition-colors duration-300 ${className}`}>
+      {/* Theme-aware Background */}
       <div className="fixed inset-0 z-0">
-        <Silk
-          speed={backgroundConfig.speed}
-          scale={backgroundConfig.scale}
-          color={backgroundConfig.color}
-          noiseIntensity={backgroundConfig.noiseIntensity}
-          rotation={backgroundConfig.rotation}
-        />
+        {/* Dark theme background */}
+        <div className="dark-theme-bg absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+        {/* Light theme background */}
+        <div className="light-theme-bg absolute inset-0 bg-gradient-to-br from-[#FEFEF8] via-[#FDFCF5] to-[#F2E8D9]" />
       </div>
       
       {/* Content Overlay */}
       <div className="relative z-10">
         {children}
       </div>
-
-      {/* Background Configuration */}
-      <BackgroundConfig onConfigChange={setBackgroundConfig} />
     </div>
   );
 };

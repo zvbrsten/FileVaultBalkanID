@@ -4,6 +4,8 @@ import { ApolloProvider } from '@apollo/client';
 import { client } from './api/client';
 import { AuthProvider } from './hooks/useAuth';
 import { NotificationProvider } from './hooks/useNotification';
+import { useRealtimeNotifications } from './hooks/useRealtimeNotifications';
+import { ThemeProvider } from './contexts/ThemeContext';
 import QueryProvider from './providers/QueryProvider';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -18,14 +20,22 @@ import PublicFileViewer from './components/FileShare/PublicFileViewer';
 import GlobalBackground from './components/Background/GlobalBackground';
 import NotificationWrapper from './components/Notification/NotificationWrapper';
 
+// Real-time notifications component
+const RealtimeNotificationsWrapper: React.FC = () => {
+  useRealtimeNotifications();
+  return null;
+};
+
 function App() {
   return (
     <ApolloProvider client={client}>
       <QueryProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <Router>
-              <GlobalBackground>
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <RealtimeNotificationsWrapper />
+              <Router>
+                <GlobalBackground>
               <Routes>
                 {/* Public routes (no navbar) */}
                 <Route path="/share/:token" element={<PublicFileViewer shareToken={window.location.pathname.split('/')[2]} />} />
@@ -87,12 +97,14 @@ function App() {
           </Router>
           </NotificationProvider>
         </AuthProvider>
+        </ThemeProvider>
       </QueryProvider>
     </ApolloProvider>
   );
 }
 
 export default App;
+
 
 
 
