@@ -34,7 +34,7 @@ const LoginPage: React.FC = () => {
           <h2 className="mt-6 text-center text-2xl font-medium text-cream-800">
             Sign in to FileVault
           </h2>
-          <p className="mt-2 text-center text-sm text-cream-600">
+          <p className="mt-2 text-center text-sm text-cream-700">
             Or{' '}
             <Link
               to="/signup"

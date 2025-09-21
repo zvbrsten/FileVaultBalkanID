@@ -12,8 +12,14 @@ const FilesPage: React.FC = () => {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<any>(null);
 
-  const { data: filesData, loading: filesLoading, refetch: refetchFiles } = useQuery(FILES_QUERY);
-  const { data: foldersData, loading: foldersLoading, refetch: refetchFolders } = useQuery(GET_FOLDERS);
+  const { refetch: refetchFiles } = useQuery(FILES_QUERY, {
+    pollInterval: 5000, // Auto-refresh every 5 seconds
+    errorPolicy: 'all'
+  });
+  const { refetch: refetchFolders } = useQuery(GET_FOLDERS, {
+    pollInterval: 5000, // Auto-refresh every 5 seconds
+    errorPolicy: 'all'
+  });
 
   const handleFileSelect = (file: any) => {
     setSelectedFile(file);
@@ -29,7 +35,7 @@ const FilesPage: React.FC = () => {
         <div className="flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between py-4 border-b border-cream-200/20">
-            <h1 className="text-xl font-medium text-cream-800">My Drive</h1>
+            <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Helvetica, Arial, sans-serif' }}>My Drive</h1>
             <button
               onClick={() => navigate('/upload')}
               className="flex items-center space-x-2 bg-forest-green hover:bg-forest-green-hover text-cream-50 px-4 py-2 rounded transition-colors"
@@ -55,10 +61,10 @@ const FilesPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Files Without Folders Section */}
+            {/* Root Section */}
             <div className="bg-cream-50 border border-cream-200 rounded-lg shadow-sm">
               <div className="p-4">
-                <FileList onFileSelect={handleFileSelect} />
+                <FileList onFileSelect={handleFileSelect} refetchFiles={refetchFiles} />
               </div>
             </div>
           </div>
@@ -72,7 +78,7 @@ const FilesPage: React.FC = () => {
           >
             {selectedFile && (
               <div className="space-y-4">
-                <div className="space-y-2 text-cream-600">
+                <div className="space-y-2 text-cream-700">
                   <p><strong>Name:</strong> {selectedFile.originalName}</p>
                   <p><strong>Size:</strong> {selectedFile.size} bytes</p>
                   <p><strong>Type:</strong> {selectedFile.mimeType}</p>

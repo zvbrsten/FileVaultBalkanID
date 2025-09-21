@@ -29,7 +29,6 @@ interface File {
   mimeType: string;
   size: number;
   hash: string;
-  isDuplicate: boolean;
   uploaderId: string;
   folderId?: string;
   createdAt: string;
@@ -64,7 +63,6 @@ const SearchPage: React.FC = () => {
           $maxSize: Int
           $dateFrom: String
           $dateTo: String
-          $isDuplicate: Boolean
           $sortBy: String
           $sortOrder: String
           $limit: Int
@@ -77,7 +75,6 @@ const SearchPage: React.FC = () => {
             maxSize: $maxSize
             dateFrom: $dateFrom
             dateTo: $dateTo
-            isDuplicate: $isDuplicate
             sortBy: $sortBy
             sortOrder: $sortOrder
             limit: $limit
@@ -90,7 +87,6 @@ const SearchPage: React.FC = () => {
               mimeType
               size
               hash
-              isDuplicate
               uploaderId
               folderId
               createdAt
@@ -116,13 +112,8 @@ const SearchPage: React.FC = () => {
       if (filters.dateRange.end) variables.dateTo = filters.dateRange.end;
       // Handle duplicate filter logic
       if (!filters.showDuplicates && filters.showOriginals) {
-        // Show only originals (not duplicates)
-        variables.isDuplicate = false;
-      } else if (filters.showDuplicates && !filters.showOriginals) {
-        // Show only duplicates
-        variables.isDuplicate = true;
+        // Note: isDuplicate filter removed - all files are now treated equally
       }
-      // If both are true or both are false, don't set isDuplicate filter (show all)
       if (filters.sortBy) variables.sortBy = filters.sortBy;
       if (filters.sortOrder) variables.sortOrder = filters.sortOrder;
 
@@ -305,7 +296,7 @@ const SearchPage: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-8">
             <div className="flex items-center space-x-4">
-              <h1 className="text-sm font-semibold text-gray-900 drop-shadow-lg">Advanced Search</h1>
+              <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Helvetica, Arial, sans-serif' }}>Search Files</h1>
             </div>
           </div>
         </div>
@@ -364,16 +355,6 @@ const SearchPage: React.FC = () => {
                             {file.mimeType} • {formatFileSize(file.size)}
                           </div>
                           <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant={file.isDuplicate ? "secondary" : "default"} className="text-xs">
-                              {file.isDuplicate ? (
-                                <div className="flex items-center space-x-1">
-                                  <Hash className="w-3 h-3" />
-                                  <span>Duplicate</span>
-                                </div>
-                              ) : (
-                                "Original"
-                              )}
-                            </Badge>
                             <div className="flex items-center space-x-1 text-xs text-muted-foreground">
                               <Calendar className="w-3 h-3" />
                               <span>{formatDate(file.createdAt)}</span>

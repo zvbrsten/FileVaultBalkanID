@@ -23,6 +23,16 @@ interface AdminStats {
   storageEfficiency: number;
   activeUsers: number;
   newUsersToday: number;
+  deduplicationStats: DeduplicationStats;
+}
+
+interface DeduplicationStats {
+  totalFileRecords: number;
+  uniqueFileHashes: number;
+  duplicateRecords: number;
+  storageSaved: number;
+  storageSavedPercent: number;
+  costSavingsUSD: number;
 }
 
 interface UserStats {
