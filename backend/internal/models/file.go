@@ -15,7 +15,6 @@ type File struct {
 	Size         int64      `json:"size" db:"size"`
 	Hash         string     `json:"hash" db:"hash"`
 	S3Key        string     `json:"s3Key" db:"s3_key"`
-	IsDuplicate  bool       `json:"isDuplicate" db:"is_duplicate"`
 	UploaderID   uuid.UUID  `json:"uploaderId" db:"uploader_id"`
 	FolderID     *uuid.UUID `json:"folderId" db:"folder_id"`
 	Uploader     *User      `json:"uploader,omitempty"`

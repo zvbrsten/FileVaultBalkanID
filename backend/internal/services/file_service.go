@@ -111,15 +111,20 @@ func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.File
 	// Create a new reader from the content
 	contentReader := bytes.NewReader(fileContent)
 
-	// Check if file with this hash already exists
-	fmt.Println("DEBUG: Checking for existing file with same hash...")
+	// Check if file with this hash already exists (cross-user deduplication)
+	fmt.Println("DEBUG: Checking for existing file with same hash across all users...")
 	existingFileHash, err := s.fileHashRepo.GetByHash(hashString)
-	if err == nil {
-		fmt.Println("DEBUG: Duplicate file detected, creating reference...")
-		// File already exists, create a reference
-		result, err := s.createFileReference(fileHeader, uploaderID, existingFileHash, folderID)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to check for existing file hash: %v\n", err)
+		return nil, err
+	}
+
+	if existingFileHash != nil {
+		fmt.Println("DEBUG: File content already exists, creating file record without S3 upload...")
+		// File content already exists, create a file record that references the existing hash
+		result, err := s.createFileRecord(fileHeader, uploaderID, existingFileHash, folderID)
 		if err != nil {
-			fmt.Printf("ERROR: Failed to create file reference: %v\n", err)
+			fmt.Printf("ERROR: Failed to create file record: %v\n", err)
 			return nil, err
 		}
 
@@ -130,17 +135,17 @@ func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.File
 				result.ID.String(),
 				result.OriginalName,
 				result.Size,
-				true, // isDuplicate
+				false, // No longer using isDuplicate parameter
 			)
 		}
 
-		fmt.Printf("SUCCESS: File reference created: %s\n", result.ID)
-		fmt.Println("=== FILE SERVICE UPLOAD DEBUG END (DUPLICATE) ===")
+		fmt.Printf("SUCCESS: File record created (content already exists): %s\n", result.ID)
+		fmt.Println("=== FILE SERVICE UPLOAD DEBUG END (CONTENT EXISTS) ===")
 		return result, nil
 	}
-	fmt.Println("DEBUG: New file detected, proceeding with S3 upload...")
+	fmt.Println("DEBUG: New file content detected, proceeding with S3 upload...")
 
-	// New file, upload to S3
+	// New file content, upload to S3
 	result, err := s.saveNewFileToS3(fileHeader, uploaderID, hashString, contentReader, folderID)
 	if err != nil {
 		fmt.Printf("ERROR: Failed to save new file to S3: %v\n", err)
@@ -155,7 +160,7 @@ func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.File
 			result.ID.String(),
 			result.OriginalName,
 			result.Size,
-			false, // isDuplicate
+			false, // No longer using isDuplicate parameter
 		)
 	}
 
@@ -164,9 +169,9 @@ func (s *FileService) UploadFile(file multipart.File, fileHeader *multipart.File
 	return result, nil
 }
 
-// createFileReference creates a file reference for an existing file
-func (s *FileService) createFileReference(fileHeader *multipart.FileHeader, uploaderID uuid.UUID, existingFileHash *models.FileHash, folderID *uuid.UUID) (*models.File, error) {
-	fmt.Println("DEBUG: Creating file reference for duplicate file...")
+// createFileRecord creates a file record that references existing content
+func (s *FileService) createFileRecord(fileHeader *multipart.FileHeader, uploaderID uuid.UUID, existingFileHash *models.FileHash, folderID *uuid.UUID) (*models.File, error) {
+	fmt.Println("DEBUG: Creating file record for existing content...")
 	file := &models.File{
 		ID:           uuid.New(),
 		Filename:     s.generateFilename(fileHeader.Filename),
@@ -174,19 +179,19 @@ func (s *FileService) createFileReference(fileHeader *multipart.FileHeader, uplo
 		MimeType:     fileHeader.Header.Get("Content-Type"),
 		Size:         fileHeader.Size,
 		Hash:         existingFileHash.Hash,
-		IsDuplicate:  true, // This is a duplicate file
+		S3Key:        existingFileHash.S3Key, // Reference the existing S3 key
 		UploaderID:   uploaderID,
 		FolderID:     folderID,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
 
-	fmt.Printf("DEBUG: File reference struct created: %+v\n", file)
+	fmt.Printf("DEBUG: File record struct created: %+v\n", file)
 	if err := s.fileRepo.Create(file); err != nil {
-		fmt.Printf("ERROR: Failed to create file reference in database: %v\n", err)
-		return nil, fmt.Errorf("failed to create file reference: %w", err)
+		fmt.Printf("ERROR: Failed to create file record in database: %v\n", err)
+		return nil, fmt.Errorf("failed to create file record: %w", err)
 	}
-	fmt.Println("DEBUG: File reference created successfully in database")
+	fmt.Println("DEBUG: File record created successfully in database")
 
 	return file, nil
 }
@@ -243,7 +248,6 @@ func (s *FileService) saveNewFileToS3(fileHeader *multipart.FileHeader, uploader
 		Size:         fileHeader.Size,
 		Hash:         hashString,
 		S3Key:        s3Key,
-		IsDuplicate:  false, // This is a new unique file
 		UploaderID:   uploaderID,
 		FolderID:     folderID,
 		CreatedAt:    time.Now(),

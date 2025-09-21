@@ -19,9 +19,9 @@ func (r *FileRepository) GetTotalFiles() (int64, error) {
 	return count, nil
 }
 
-// GetUniqueFiles returns the number of unique files (non-duplicates)
+// GetUniqueFiles returns the number of unique files (by hash)
 func (r *FileRepository) GetUniqueFiles() (int64, error) {
-	query := `SELECT COUNT(*) FROM files WHERE is_duplicate = false`
+	query := `SELECT COUNT(DISTINCT hash) FROM files`
 	var count int64
 	err := r.db.QueryRow(query).Scan(&count)
 	if err != nil {
@@ -32,7 +32,7 @@ func (r *FileRepository) GetUniqueFiles() (int64, error) {
 
 // GetTotalStorage returns the total storage used by all files
 func (r *FileRepository) GetTotalStorage() (int64, error) {
-	query := `SELECT COALESCE(SUM(size), 0) FROM files WHERE is_duplicate = false`
+	query := `SELECT COALESCE(SUM(size), 0) FROM files`
 	var total int64
 	err := r.db.QueryRow(query).Scan(&total)
 	if err != nil {
@@ -54,7 +54,7 @@ func (r *FileRepository) GetFileCountByUser(userID uuid.UUID) (int64, error) {
 
 // GetStorageUsedByUser returns the storage used by a specific user
 func (r *FileRepository) GetStorageUsedByUser(userID uuid.UUID) (int64, error) {
-	query := `SELECT COALESCE(SUM(size), 0) FROM files WHERE uploader_id = $1 AND is_duplicate = false`
+	query := `SELECT COALESCE(SUM(size), 0) FROM files WHERE uploader_id = $1`
 	var total int64
 	err := r.db.QueryRow(query, userID).Scan(&total)
 	if err != nil {

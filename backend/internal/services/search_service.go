@@ -13,17 +13,16 @@ import (
 
 // SearchFilters represents advanced search filters
 type SearchFilters struct {
-	SearchTerm  string     `json:"searchTerm"`
-	MimeTypes   []string   `json:"mimeTypes"`
-	MinSize     *int64     `json:"minSize"`
-	MaxSize     *int64     `json:"maxSize"`
-	DateFrom    *time.Time `json:"dateFrom"`
-	DateTo      *time.Time `json:"dateTo"`
-	IsDuplicate *bool      `json:"isDuplicate"`
-	SortBy      string     `json:"sortBy"`    // "name", "size", "date", "type"
-	SortOrder   string     `json:"sortOrder"` // "asc", "desc"
-	Limit       int        `json:"limit"`
-	Offset      int        `json:"offset"`
+	SearchTerm string     `json:"searchTerm"`
+	MimeTypes  []string   `json:"mimeTypes"`
+	MinSize    *int64     `json:"minSize"`
+	MaxSize    *int64     `json:"maxSize"`
+	DateFrom   *time.Time `json:"dateFrom"`
+	DateTo     *time.Time `json:"dateTo"`
+	SortBy     string     `json:"sortBy"`    // "name", "size", "date", "type"
+	SortOrder  string     `json:"sortOrder"` // "asc", "desc"
+	Limit      int        `json:"limit"`
+	Offset     int        `json:"offset"`
 }
 
 // SearchResult represents the result of an advanced search
@@ -69,7 +68,7 @@ func (s *SearchService) AdvancedSearch(userID uuid.UUID, filters SearchFilters) 
 
 	// Get the actual files
 	filesQuery := fmt.Sprintf(`
-		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.is_duplicate, f.uploader_id, f.created_at, f.updated_at,
+		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.s3_key, f.uploader_id, f.folder_id, f.created_at, f.updated_at,
 		       u.id, u.email, u.username, u.role, u.created_at, u.updated_at
 		FROM files f
 		LEFT JOIN users u ON f.uploader_id = u.id
@@ -99,8 +98,9 @@ func (s *SearchService) AdvancedSearch(userID uuid.UUID, filters SearchFilters) 
 			&file.MimeType,
 			&file.Size,
 			&file.Hash,
-			&file.IsDuplicate,
+			&file.S3Key,
 			&file.UploaderID,
+			&file.FolderID,
 			&file.CreatedAt,
 			&file.UpdatedAt,
 			&uploader.ID,
@@ -181,13 +181,6 @@ func (s *SearchService) buildWhereClause(userID uuid.UUID, filters SearchFilters
 	if filters.DateTo != nil {
 		conditions = append(conditions, fmt.Sprintf("f.created_at <= $%d", argIndex))
 		args = append(args, *filters.DateTo)
-		argIndex++
-	}
-
-	// Duplicate filter
-	if filters.IsDuplicate != nil {
-		conditions = append(conditions, fmt.Sprintf("f.is_duplicate = $%d", argIndex))
-		args = append(args, *filters.IsDuplicate)
 		argIndex++
 	}
 
@@ -313,10 +306,10 @@ func (s *SearchService) GetFileStats(userID uuid.UUID) (map[string]interface{}, 
 	}
 	stats["uniqueFiles"] = uniqueFiles
 
-	// Total size
+	// Total size (sum of all files, including shared content)
 	var totalSize int64
 	err = s.fileRepo.GetDB().QueryRow(`
-		SELECT COALESCE(SUM(size), 0) FROM files WHERE uploader_id = $1 AND is_duplicate = false
+		SELECT COALESCE(SUM(size), 0) FROM files WHERE uploader_id = $1
 	`, userID).Scan(&totalSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total size: %w", err)

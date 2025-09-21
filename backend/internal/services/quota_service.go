@@ -1,8 +1,9 @@
 package services
 
 import (
-	"fmt"
 	"filevault/internal/repositories"
+	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -31,8 +32,8 @@ func (s *QuotaService) GetUserStorageUsage(userID uuid.UUID) (int64, error) {
 	seenHashes := make(map[string]bool)
 
 	for _, file := range files {
-		// Only count unique files (not duplicates) for storage calculation
-		if !file.IsDuplicate && !seenHashes[file.Hash] {
+		// Count each file only once based on hash (cross-user deduplication)
+		if !seenHashes[file.Hash] {
 			totalSize += file.Size
 			seenHashes[file.Hash] = true
 		}
@@ -51,7 +52,7 @@ func (s *QuotaService) CheckQuota(userID uuid.UUID, fileSize int64) error {
 	quotaBytes := s.quotaMB * 1024 * 1024 // Convert MB to bytes
 
 	if currentUsage+fileSize > quotaBytes {
-		return fmt.Errorf("storage quota exceeded: %d bytes used, %d bytes quota, %d bytes requested", 
+		return fmt.Errorf("storage quota exceeded: %d bytes used, %d bytes quota, %d bytes requested",
 			currentUsage, quotaBytes, fileSize)
 	}
 
@@ -70,11 +71,10 @@ func (s *QuotaService) GetQuotaInfo(userID uuid.UUID) (map[string]interface{}, e
 	usagePercentage := float64(currentUsage) / float64(quotaBytes) * 100
 
 	return map[string]interface{}{
-		"used_bytes":        currentUsage,
-		"quota_bytes":       quotaBytes,
-		"remaining_bytes":   remainingBytes,
-		"usage_percentage":  usagePercentage,
+		"used_bytes":       currentUsage,
+		"quota_bytes":      quotaBytes,
+		"remaining_bytes":  remainingBytes,
+		"usage_percentage": usagePercentage,
 		"quota_mb":         s.quotaMB,
 	}, nil
 }
-

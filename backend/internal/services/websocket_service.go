@@ -32,7 +32,7 @@ func (s *WebSocketService) BroadcastFileUploadProgress(userID, fileID, fileName 
 
 // BroadcastFileUploadComplete broadcasts file upload completion to user
 func (s *WebSocketService) BroadcastFileUploadComplete(userID, fileID, fileName string, fileSize int64, isDuplicate bool) {
-	message := websocket.NewFileUploadCompleteMessage(fileID, fileName, fileSize, isDuplicate)
+	message := websocket.NewFileUploadCompleteMessage(fileID, fileName, fileSize, false) // Always false since we removed isDuplicate concept
 	s.hub.BroadcastToUser(userID, message)
 	log.Printf("Broadcasted file upload complete: UserID=%s, FileID=%s, FileName=%s", userID, fileID, fileName)
 }
@@ -102,7 +102,3 @@ func (s *WebSocketService) GetConnectedUsers() int {
 func (s *WebSocketService) GetConnectedAdmins() int {
 	return s.hub.GetConnectedAdmins()
 }
-
-
-
-

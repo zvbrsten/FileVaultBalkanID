@@ -16,7 +16,6 @@ type File {
   mimeType: String!
   size: Int!
   hash: String!
-  isDuplicate: Boolean!
   uploaderId: ID!
   folderId: ID
   uploader: User
@@ -44,7 +43,6 @@ type Query {
     maxSize: Int
     dateFrom: String
     dateTo: String
-    isDuplicate: Boolean
     sortBy: String
     sortOrder: String
     limit: Int = 10
@@ -127,6 +125,16 @@ type AdminStats {
   storageEfficiency: Float!
   activeUsers: Int!
   newUsersToday: Int!
+  deduplicationStats: DeduplicationStats!
+}
+
+type DeduplicationStats {
+  totalFileRecords: Int!
+  uniqueFileHashes: Int!
+  duplicateRecords: Int!
+  storageSaved: Int!
+  storageSavedPercent: Float!
+  costSavingsUSD: Float!
 }
 
 type UserStats {

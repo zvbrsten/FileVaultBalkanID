@@ -65,7 +65,7 @@ func (r *FileHashRepository) GetByHash(hash string) (*models.FileHash, error) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("file hash not found")
+			return nil, nil // Return nil, nil when hash not found
 		}
 		return nil, fmt.Errorf("failed to get file hash: %w", err)
 	}
@@ -93,4 +93,26 @@ func (r *FileHashRepository) Exists(hash string) (bool, error) {
 		return false, fmt.Errorf("failed to check file hash existence: %w", err)
 	}
 	return exists, nil
+}
+
+// GetTotalHashes returns the total number of unique file hashes
+func (r *FileHashRepository) GetTotalHashes() (int64, error) {
+	query := `SELECT COUNT(*) FROM file_hashes`
+	var count int64
+	err := r.db.QueryRow(query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total hashes: %w", err)
+	}
+	return count, nil
+}
+
+// GetTotalStorage returns the total storage used by unique files
+func (r *FileHashRepository) GetTotalStorage() (int64, error) {
+	query := `SELECT COALESCE(SUM(size), 0) FROM file_hashes`
+	var totalSize int64
+	err := r.db.QueryRow(query).Scan(&totalSize)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total storage: %w", err)
+	}
+	return totalSize, nil
 }

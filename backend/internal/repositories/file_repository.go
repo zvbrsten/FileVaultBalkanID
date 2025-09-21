@@ -20,8 +20,8 @@ func NewFileRepository(db *sql.DB) *FileRepository {
 // Create creates a new file record
 func (r *FileRepository) Create(file *models.File) error {
 	query := `
-	INSERT INTO files (id, filename, original_name, mime_type, size, hash, s3_key, is_duplicate, uploader_id, folder_id)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	INSERT INTO files (id, filename, original_name, mime_type, size, hash, s3_key, uploader_id, folder_id)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING created_at, updated_at
 	`
 
@@ -34,7 +34,6 @@ func (r *FileRepository) Create(file *models.File) error {
 		file.Size,
 		file.Hash,
 		file.S3Key,
-		file.IsDuplicate,
 		file.UploaderID,
 		file.FolderID,
 	).Scan(&file.CreatedAt, &file.UpdatedAt)
@@ -49,7 +48,7 @@ func (r *FileRepository) Create(file *models.File) error {
 // GetByID retrieves a file by ID
 func (r *FileRepository) GetByID(id uuid.UUID) (*models.File, error) {
 	query := `
-		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.s3_key, f.is_duplicate, f.uploader_id, f.folder_id, f.created_at, f.updated_at,
+		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.s3_key, f.uploader_id, f.folder_id, f.created_at, f.updated_at,
 		       u.id, u.email, u.username, u.role, u.created_at, u.updated_at
 		FROM files f
 		LEFT JOIN users u ON f.uploader_id = u.id
@@ -67,7 +66,6 @@ func (r *FileRepository) GetByID(id uuid.UUID) (*models.File, error) {
 		&file.Size,
 		&file.Hash,
 		&file.S3Key,
-		&file.IsDuplicate,
 		&file.UploaderID,
 		&file.FolderID,
 		&file.CreatedAt,
@@ -95,7 +93,7 @@ func (r *FileRepository) GetByID(id uuid.UUID) (*models.File, error) {
 func (r *FileRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.File, error) {
 	fmt.Printf("DEBUG: FileRepository.GetByUserID called - User: %s, Limit: %d, Offset: %d\n", userID, limit, offset)
 	query := `
-		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.s3_key, f.is_duplicate, f.uploader_id, f.folder_id, f.created_at, f.updated_at,
+		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.s3_key, f.uploader_id, f.folder_id, f.created_at, f.updated_at,
 		       u.id, u.email, u.username, u.role, u.created_at, u.updated_at
 		FROM files f
 		LEFT JOIN users u ON f.uploader_id = u.id
@@ -127,7 +125,6 @@ func (r *FileRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*mo
 			&file.Size,
 			&file.Hash,
 			&file.S3Key,
-			&file.IsDuplicate,
 			&file.UploaderID,
 			&file.FolderID,
 			&file.CreatedAt,
@@ -182,7 +179,6 @@ func (r *FileRepository) SearchByUserID(userID uuid.UUID, searchTerm string, lim
 			&file.Size,
 			&file.Hash,
 			&file.S3Key,
-			&file.IsDuplicate,
 			&file.UploaderID,
 			&file.FolderID,
 			&file.CreatedAt,
@@ -230,7 +226,6 @@ func (r *FileRepository) GetByHash(hash string) ([]*models.File, error) {
 			&file.Size,
 			&file.Hash,
 			&file.S3Key,
-			&file.IsDuplicate,
 			&file.UploaderID,
 			&file.FolderID,
 			&file.CreatedAt,
@@ -288,7 +283,6 @@ func (r *FileRepository) GetByUserIDAndFolderID(userID uuid.UUID, folderID uuid.
 			&file.Size,
 			&file.Hash,
 			&file.S3Key,
-			&file.IsDuplicate,
 			&file.UploaderID,
 			&file.FolderID,
 			&file.CreatedAt,
