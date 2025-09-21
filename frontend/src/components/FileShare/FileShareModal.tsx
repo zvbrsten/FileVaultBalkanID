@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Share2, Copy, ExternalLink, Calendar, Download } from 'lucide-react';
+import RealtimeDownloadCount from '../RealtimeDownloadCount';
 
 interface FileShareModalProps {
   isOpen: boolean;
@@ -310,7 +311,11 @@ const FileShareModal: React.FC<FileShareModalProps> = ({ isOpen, onClose, file }
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-500">Downloads:</span>
-                        <span className="ml-2 font-medium">{share.downloadCount}</span>
+                        <RealtimeDownloadCount
+                          shareId={share.id}
+                          initialCount={share.downloadCount}
+                          className="ml-2"
+                        />
                         {share.maxDownloads && (
                           <span className="text-gray-500">/ {share.maxDownloads}</span>
                         )}
