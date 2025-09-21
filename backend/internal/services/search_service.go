@@ -354,3 +354,4 @@ func (s *SearchService) GetFileStats(userID uuid.UUID) (map[string]interface{}, 
 
 	return stats, nil
 }
+

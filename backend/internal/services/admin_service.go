@@ -257,3 +257,4 @@ func (s *AdminService) IsAdmin(userID uuid.UUID) (bool, error) {
 
 	return user.Role == models.RoleAdmin, nil
 }
+
