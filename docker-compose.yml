@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: filevault-postgres
+    environment:
+      POSTGRES_DB: filevault
+      POSTGRES_USER: filevault
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filevault -d filevault"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Go Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: filevault-backend
+    environment:
+      DATABASE_URL: postgres://filevault:password@postgres:5432/filevault?sslmode=disable
+      JWT_SECRET: your-secret-key-change-in-production
+      UPLOAD_PATH: /app/uploads
+      PORT: 8080
+      GIN_MODE: release
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: filevault-frontend
+    environment:
+      REACT_APP_GRAPHQL_URL: http://localhost:8080/query
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
