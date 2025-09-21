@@ -328,6 +328,3 @@ func (r *FileShareRepository) GetRecentDownloads(shareID uuid.UUID, limit int) (
 
 	return logs, nil
 }
-
-
-

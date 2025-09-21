@@ -248,3 +248,9 @@ func (s *FolderService) DeleteFolder(folderID uuid.UUID, userID uuid.UUID) error
 	fmt.Printf("=== FOLDER SERVICE DELETE DEBUG END ===\n")
 	return nil
 }
+
+
+
+
+
+

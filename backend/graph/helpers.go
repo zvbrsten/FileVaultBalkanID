@@ -68,6 +68,3 @@ func getInt(variables map[string]interface{}, key string) *int {
 	}
 	return nil
 }
-
-
-

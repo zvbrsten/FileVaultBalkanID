@@ -72,6 +72,3 @@ func (fs *FileShare) IsDownloadLimitReached() bool {
 func (fs *FileShare) CanBeDownloaded() bool {
 	return fs.IsActive && !fs.IsExpired() && !fs.IsDownloadLimitReached()
 }
-
-
-

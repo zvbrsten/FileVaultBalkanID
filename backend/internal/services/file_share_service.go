@@ -402,4 +402,3 @@ func (s *FileShareService) GetFileShareStats(userID uuid.UUID, shareID uuid.UUID
 
 	return stats, nil
 }
-

@@ -2,3 +2,9 @@
 UPDATE folders 
 SET path = name 
 WHERE path IS NULL;
+
+
+
+
+
+

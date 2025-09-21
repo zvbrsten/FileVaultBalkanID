@@ -129,6 +129,3 @@ func RegisterFileShareRoutes(router *gin.Engine, fileShareService *services.File
 		protected.GET("/:id/stats", handler.GetFileShareStats)
 	}
 }
-
-
-
