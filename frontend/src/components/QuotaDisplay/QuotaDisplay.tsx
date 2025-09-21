@@ -3,15 +3,15 @@ import { HardDrive, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@apollo/client';
 import { GET_QUOTA } from '../../api/queries';
 
-interface FileStats {
-  totalFiles: number;
-  uniqueFiles: number;
-  totalSize: number;
-  filesByMimeType: Array<{
-    mimeType: string;
-    count: number;
-  }>;
-}
+// interface FileStats {
+//   totalFiles: number;
+//   uniqueFiles: number;
+//   totalSize: number;
+//   filesByMimeType: Array<{
+//     mimeType: string;
+//     count: number;
+//   }>;
+// }
 
 const QuotaDisplay: React.FC = () => {
   const { data, loading, error } = useQuery(GET_QUOTA, {
