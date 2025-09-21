@@ -71,7 +71,7 @@ func main() {
 	fileService := services.NewFileService(fileRepo, fileHashRepo, shareRepo, downloadRepo, s3Service, mimeValidationService, websocketService)
 	quotaService := services.NewQuotaService(fileRepo, cfg.StorageQuotaMB)
 	searchService := services.NewSearchService(fileRepo)
-	adminService := services.NewAdminService(userRepo, fileRepo, websocketService)
+	adminService := services.NewAdminService(userRepo, fileRepo, fileHashRepo, s3Service, websocketService)
 	folderService := services.NewFolderService(folderRepo)
 
 	// Initialize file share service with S3 configuration

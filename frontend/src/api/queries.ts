@@ -54,7 +54,6 @@ export const FILES_QUERY = gql`
       mimeType
       size
       hash
-      isDuplicate
       uploaderId
       folderId
       uploader {
@@ -77,7 +76,6 @@ export const SEARCH_FILES_QUERY = gql`
       mimeType
       size
       hash
-      isDuplicate
       uploaderId
       folderId
       uploader {
@@ -169,7 +167,6 @@ export const GET_FILES_BY_FOLDER = gql`
       mimeType
       size
       hash
-      isDuplicate
       uploaderId
       folderId
       uploader {
@@ -219,8 +216,57 @@ export const GET_FILE_SHARE_STATS = gql`
   }
 `;
 
+// Admin queries
+export const GET_ADMIN_STATS = gql`
+  query GetAdminStats {
+    adminStats {
+      totalUsers
+      totalFiles
+      totalStorage
+      uniqueFiles
+      duplicateFiles
+      storageEfficiency
+      activeUsers
+      newUsersToday
+      deduplicationStats {
+        totalFileRecords
+        uniqueFileHashes
+        duplicateRecords
+        storageSaved
+        storageSavedPercent
+        costSavingsUSD
+      }
+    }
+  }
+`;
 
+export const GET_ADMIN_USERS = gql`
+  query GetAdminUsers($limit: Int, $offset: Int) {
+    adminUsers(limit: $limit, offset: $offset) {
+      userId
+      username
+      email
+      totalFiles
+      storageUsed
+      lastLogin
+      createdAt
+      isActive
+    }
+  }
+`;
 
+export const GET_SYSTEM_HEALTH = gql`
+  query GetSystemHealth {
+    adminSystemHealth {
+      databaseStatus
+      storageStatus
+      uptime
+      memoryUsage
+      diskUsage
+      lastBackup
+    }
+  }
+`;
 
 
 

@@ -225,7 +225,7 @@ func (r *Resolver) LoginUser(ctx context.Context, email string, password string)
 }
 
 // AdvancedSearch performs advanced search with multiple filters
-func (r *Resolver) AdvancedSearch(ctx context.Context, searchTerm *string, mimeTypes []string, minSize *int, maxSize *int, dateFrom *string, dateTo *string, isDuplicate *bool, sortBy *string, sortOrder *string, limit *int, offset *int) (*services.SearchResult, error) {
+func (r *Resolver) AdvancedSearch(ctx context.Context, searchTerm *string, mimeTypes []string, minSize *int, maxSize *int, dateFrom *string, dateTo *string, sortBy *string, sortOrder *string, limit *int, offset *int) (*services.SearchResult, error) {
 	user, err := r.getCurrentUser(ctx)
 	if err != nil {
 		return nil, err
@@ -270,9 +270,6 @@ func (r *Resolver) AdvancedSearch(ctx context.Context, searchTerm *string, mimeT
 		if date, err := time.Parse("2006-01-02", *dateTo); err == nil {
 			filters.DateTo = &date
 		}
-	}
-	if isDuplicate != nil {
-		filters.IsDuplicate = isDuplicate
 	}
 	if sortBy != nil {
 		filters.SortBy = *sortBy
@@ -338,64 +335,104 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 
 // AdminStats returns system-wide statistics
 func (r *Resolver) AdminStats(ctx context.Context) (*services.AdminStats, error) {
+	fmt.Println("DEBUG: AdminStats resolver called")
+
 	user, err := r.getCurrentUser(ctx)
 	if err != nil {
+		fmt.Printf("DEBUG: Failed to get current user: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Current user: %+v\n", user)
 
 	// Check if user is admin
 	isAdmin, err := r.AdminService.IsAdmin(user.ID)
 	if err != nil {
+		fmt.Printf("DEBUG: Failed to check admin status: %v\n", err)
 		return nil, fmt.Errorf("failed to check admin status: %w", err)
 	}
+	fmt.Printf("DEBUG: Is admin: %v\n", isAdmin)
+
 	if !isAdmin {
+		fmt.Println("DEBUG: Access denied - not admin")
 		return nil, fmt.Errorf("access denied: admin privileges required")
 	}
 
-	return r.AdminService.GetSystemStats()
+	fmt.Println("DEBUG: Calling AdminService.GetSystemStats()")
+	stats, err := r.AdminService.GetSystemStats()
+	if err != nil {
+		fmt.Printf("DEBUG: GetSystemStats failed: %v\n", err)
+		return nil, err
+	}
+	fmt.Printf("DEBUG: GetSystemStats successful: %+v\n", stats)
+
+	return stats, nil
 }
 
 // AdminUsers returns all users with their statistics
 func (r *Resolver) AdminUsers(ctx context.Context, limit *int, offset *int) ([]*services.UserStats, error) {
+	fmt.Println("DEBUG: AdminUsers resolver called")
+
 	user, err := r.getCurrentUser(ctx)
 	if err != nil {
+		fmt.Printf("DEBUG: Failed to get current user: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Current user: %+v\n", user)
 
 	// Check if user is admin
 	isAdmin, err := r.AdminService.IsAdmin(user.ID)
 	if err != nil {
+		fmt.Printf("DEBUG: Failed to check admin status: %v\n", err)
 		return nil, fmt.Errorf("failed to check admin status: %w", err)
 	}
+	fmt.Printf("DEBUG: Is admin: %v\n", isAdmin)
+
 	if !isAdmin {
+		fmt.Println("DEBUG: Access denied - not admin")
 		return nil, fmt.Errorf("access denied: admin privileges required")
 	}
 
 	limitVal := 20
-	offsetVal := 0
 	if limit != nil {
 		limitVal = *limit
 	}
+	offsetVal := 0
 	if offset != nil {
 		offsetVal = *offset
 	}
 
-	return r.AdminService.GetAllUsers(limitVal, offsetVal)
-}
-
-// AdminUserDetails returns detailed information about a specific user
-func (r *Resolver) AdminUserDetails(ctx context.Context, userID string) (*services.UserStats, error) {
-	user, err := r.getCurrentUser(ctx)
+	fmt.Printf("DEBUG: Calling AdminService.GetAllUsers with limit=%d, offset=%d\n", limitVal, offsetVal)
+	users, err := r.AdminService.GetAllUsers(limitVal, offsetVal)
 	if err != nil {
+		fmt.Printf("DEBUG: GetAllUsers failed: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("DEBUG: GetAllUsers successful, returned %d users\n", len(users))
+
+	return users, nil
+}
+
+// AdminUserDetails returns detailed statistics for a specific user
+func (r *Resolver) AdminUserDetails(ctx context.Context, userID string) (*services.UserStats, error) {
+	fmt.Println("DEBUG: AdminUserDetails resolver called")
+
+	user, err := r.getCurrentUser(ctx)
+	if err != nil {
+		fmt.Printf("DEBUG: Failed to get current user: %v\n", err)
+		return nil, err
+	}
+	fmt.Printf("DEBUG: Current user: %+v\n", user)
 
 	// Check if user is admin
 	isAdmin, err := r.AdminService.IsAdmin(user.ID)
 	if err != nil {
+		fmt.Printf("DEBUG: Failed to check admin status: %v\n", err)
 		return nil, fmt.Errorf("failed to check admin status: %w", err)
 	}
+	fmt.Printf("DEBUG: Is admin: %v\n", isAdmin)
+
 	if !isAdmin {
+		fmt.Println("DEBUG: Access denied - not admin")
 		return nil, fmt.Errorf("access denied: admin privileges required")
 	}
 
@@ -404,26 +441,50 @@ func (r *Resolver) AdminUserDetails(ctx context.Context, userID string) (*servic
 		return nil, fmt.Errorf("invalid user ID: %w", err)
 	}
 
-	return r.AdminService.GetUserDetails(userUUID)
+	fmt.Printf("DEBUG: Calling AdminService.GetUserDetails for user %s\n", userID)
+	userStats, err := r.AdminService.GetUserDetails(userUUID)
+	if err != nil {
+		fmt.Printf("DEBUG: GetUserDetails failed: %v\n", err)
+		return nil, err
+	}
+	fmt.Printf("DEBUG: GetUserDetails successful: %+v\n", userStats)
+
+	return userStats, nil
 }
 
 // AdminSystemHealth returns system health metrics
 func (r *Resolver) AdminSystemHealth(ctx context.Context) (*services.SystemHealth, error) {
+	fmt.Println("DEBUG: AdminSystemHealth resolver called")
+
 	user, err := r.getCurrentUser(ctx)
 	if err != nil {
+		fmt.Printf("DEBUG: Failed to get current user: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Current user: %+v\n", user)
 
 	// Check if user is admin
 	isAdmin, err := r.AdminService.IsAdmin(user.ID)
 	if err != nil {
+		fmt.Printf("DEBUG: Failed to check admin status: %v\n", err)
 		return nil, fmt.Errorf("failed to check admin status: %w", err)
 	}
+	fmt.Printf("DEBUG: Is admin: %v\n", isAdmin)
+
 	if !isAdmin {
+		fmt.Println("DEBUG: Access denied - not admin")
 		return nil, fmt.Errorf("access denied: admin privileges required")
 	}
 
-	return r.AdminService.GetSystemHealth()
+	fmt.Println("DEBUG: Calling AdminService.GetSystemHealth()")
+	health, err := r.AdminService.GetSystemHealth()
+	if err != nil {
+		fmt.Printf("DEBUG: GetSystemHealth failed: %v\n", err)
+		return nil, err
+	}
+	fmt.Printf("DEBUG: GetSystemHealth successful: %+v\n", health)
+
+	return health, nil
 }
 
 // AdminDeleteUser deletes a user and all their files

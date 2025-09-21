@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -13,14 +14,25 @@ import (
 
 // AdminStats represents system-wide statistics
 type AdminStats struct {
-	TotalUsers        int64   `json:"totalUsers"`
-	TotalFiles        int64   `json:"totalFiles"`
-	TotalStorage      int64   `json:"totalStorage"`
-	UniqueFiles       int64   `json:"uniqueFiles"`
-	DuplicateFiles    int64   `json:"duplicateFiles"`
-	StorageEfficiency float64 `json:"storageEfficiency"`
-	ActiveUsers       int64   `json:"activeUsers"`
-	NewUsersToday     int64   `json:"newUsersToday"`
+	TotalUsers         int64              `json:"totalUsers"`
+	TotalFiles         int64              `json:"totalFiles"`
+	TotalStorage       int64              `json:"totalStorage"`
+	UniqueFiles        int64              `json:"uniqueFiles"`
+	DuplicateFiles     int64              `json:"duplicateFiles"`
+	StorageEfficiency  float64            `json:"storageEfficiency"`
+	ActiveUsers        int64              `json:"activeUsers"`
+	NewUsersToday      int64              `json:"newUsersToday"`
+	DeduplicationStats DeduplicationStats `json:"deduplicationStats"`
+}
+
+// DeduplicationStats represents deduplication savings metrics
+type DeduplicationStats struct {
+	TotalFileRecords    int64   `json:"totalFileRecords"`
+	UniqueFileHashes    int64   `json:"uniqueFileHashes"`
+	DuplicateRecords    int64   `json:"duplicateRecords"`
+	StorageSaved        int64   `json:"storageSaved"`
+	StorageSavedPercent float64 `json:"storageSavedPercent"`
+	CostSavingsUSD      float64 `json:"costSavingsUSD"`
 }
 
 // UserStats represents statistics for a specific user
@@ -49,14 +61,18 @@ type SystemHealth struct {
 type AdminService struct {
 	userRepo         *repositories.UserRepository
 	fileRepo         *repositories.FileRepository
+	fileHashRepo     *repositories.FileHashRepository
+	s3Service        *S3Service
 	websocketService *WebSocketService
 }
 
 // NewAdminService creates a new admin service
-func NewAdminService(userRepo *repositories.UserRepository, fileRepo *repositories.FileRepository, websocketService *WebSocketService) *AdminService {
+func NewAdminService(userRepo *repositories.UserRepository, fileRepo *repositories.FileRepository, fileHashRepo *repositories.FileHashRepository, s3Service *S3Service, websocketService *WebSocketService) *AdminService {
 	return &AdminService{
 		userRepo:         userRepo,
 		fileRepo:         fileRepo,
+		fileHashRepo:     fileHashRepo,
+		s3Service:        s3Service,
 		websocketService: websocketService,
 	}
 }
@@ -112,6 +128,13 @@ func (s *AdminService) GetSystemStats() (*AdminStats, error) {
 		return nil, fmt.Errorf("failed to get new users today: %w", err)
 	}
 	stats.NewUsersToday = newUsersToday
+
+	// Calculate deduplication metrics
+	dedupStats, err := s.calculateDeduplicationStats()
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate deduplication stats: %w", err)
+	}
+	stats.DeduplicationStats = *dedupStats
 
 	// Broadcast system stats update to admins
 	if s.websocketService != nil {
@@ -237,15 +260,54 @@ func (s *AdminService) UpdateUserRole(userID uuid.UUID, role string) error {
 
 // GetSystemHealth returns system health metrics
 func (s *AdminService) GetSystemHealth() (*SystemHealth, error) {
-	health := &SystemHealth{
-		DatabaseStatus: "healthy",
-		StorageStatus:  "healthy",
-		Uptime:         "24h 15m", // TODO: Implement actual uptime tracking
-		MemoryUsage:    45.2,      // TODO: Implement actual memory monitoring
-		DiskUsage:      67.8,      // TODO: Implement actual disk monitoring
+	health := &SystemHealth{}
+
+	// Check database health
+	if err := s.checkDatabaseHealth(); err != nil {
+		health.DatabaseStatus = "unhealthy"
+		fmt.Printf("Database health check failed: %v\n", err)
+	} else {
+		health.DatabaseStatus = "healthy"
 	}
 
+	// Check AWS S3 storage health
+	if err := s.checkStorageHealth(); err != nil {
+		health.StorageStatus = "unhealthy"
+		fmt.Printf("Storage health check failed: %v\n", err)
+	} else {
+		health.StorageStatus = "healthy"
+	}
+
+	// Get system uptime (simplified)
+	health.Uptime = "24h 15m" // TODO: Implement actual uptime tracking
+
+	// Get memory usage (simplified)
+	health.MemoryUsage = 45.2 // TODO: Implement actual memory monitoring
+
+	// Get disk usage (simplified)
+	health.DiskUsage = 67.8 // TODO: Implement actual disk monitoring
+
 	return health, nil
+}
+
+// checkDatabaseHealth verifies database connectivity
+func (s *AdminService) checkDatabaseHealth() error {
+	// Try to get total users count as a simple health check
+	_, err := s.userRepo.GetTotalUsers()
+	return err
+}
+
+// checkStorageHealth verifies AWS S3 connectivity
+func (s *AdminService) checkStorageHealth() error {
+	if s.s3Service == nil {
+		return fmt.Errorf("S3 service not initialized")
+	}
+
+	// Try to check if a non-existent file exists as a health check
+	// This is a lightweight operation that verifies connectivity
+	_, err := s.s3Service.FileExists(context.Background(), "health-check-test-file-that-does-not-exist")
+	// We expect this to return false with no error, which means S3 is accessible
+	return err
 }
 
 // IsAdmin checks if a user is an admin
@@ -256,4 +318,55 @@ func (s *AdminService) IsAdmin(userID uuid.UUID) (bool, error) {
 	}
 
 	return user.Role == models.RoleAdmin, nil
+}
+
+// calculateDeduplicationStats calculates deduplication savings metrics
+func (s *AdminService) calculateDeduplicationStats() (*DeduplicationStats, error) {
+	stats := &DeduplicationStats{}
+
+	// Get total file records
+	totalFileRecords, err := s.fileRepo.GetTotalFiles()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get total file records: %w", err)
+	}
+	stats.TotalFileRecords = totalFileRecords
+
+	// Get unique file hashes
+	uniqueFileHashes, err := s.fileHashRepo.GetTotalHashes()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get unique file hashes: %w", err)
+	}
+	stats.UniqueFileHashes = uniqueFileHashes
+
+	// Calculate duplicate records
+	stats.DuplicateRecords = totalFileRecords - uniqueFileHashes
+
+	// Calculate storage saved (duplicate records * average file size)
+	if stats.DuplicateRecords > 0 {
+		// Get total storage from unique files only
+		uniqueStorage, err := s.fileHashRepo.GetTotalStorage()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get unique storage: %w", err)
+		}
+
+		// Get total storage from all file records
+		totalStorage, err := s.fileRepo.GetTotalStorage()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get total storage: %w", err)
+		}
+
+		// Storage saved is the difference
+		stats.StorageSaved = totalStorage - uniqueStorage
+
+		// Calculate percentage saved
+		if totalStorage > 0 {
+			stats.StorageSavedPercent = float64(stats.StorageSaved) / float64(totalStorage) * 100
+		}
+
+		// Calculate cost savings (assuming $0.023 per GB per month for S3)
+		storageSavedGB := float64(stats.StorageSaved) / (1024 * 1024 * 1024)
+		stats.CostSavingsUSD = storageSavedGB * 0.023 // $0.023 per GB per month
+	}
+
+	return stats, nil
 }
