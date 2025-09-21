@@ -299,23 +299,23 @@ const SearchPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pt-28">
       {/* Header */}
-      <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+      <div className="bg-cream-50/10 backdrop-blur-sm border-b border-cream-200/20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-8">
             <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-semibold text-white drop-shadow-lg">Advanced Search</h1>
+              <h1 className="text-sm font-semibold text-gray-900 drop-shadow-lg">Advanced Search</h1>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="py-2">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Advanced Search Component */}
-          <div className="mb-6">
+          <div className="mb-2">
             <AdvancedSearch
               onSearch={handleSearch}
               onClear={handleClear}

@@ -12,6 +12,7 @@ import {
   Clock,
   Database
 } from 'lucide-react';
+import RealtimeAdminStats from '../components/RealtimeAdminStats';
 
 interface AdminStats {
   totalUsers: number;
@@ -183,7 +184,7 @@ const AdminPage: React.FC = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-cream-50 flex items-center justify-center pt-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading admin panel...</p>
@@ -194,7 +195,7 @@ const AdminPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-cream-50 flex items-center justify-center pt-20">
         <div className="text-center">
           <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
@@ -205,14 +206,14 @@ const AdminPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen pt-28">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-2">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-              <p className="text-gray-600 mt-1">System administration and monitoring</p>
+              <h1 className="text-lg font-bold text-gray-900">Admin Panel</h1>
+              <p className="text-xs text-gray-600 mt-1">System administration and monitoring</p>
             </div>
             <div className="flex items-center space-x-2">
               <Shield className="w-6 h-6 text-blue-500" />
@@ -224,7 +225,7 @@ const AdminPage: React.FC = () => {
 
       {/* Navigation Tabs */}
       <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {[
               { id: 'overview', label: 'Overview', icon: Activity },
@@ -255,7 +256,10 @@ const AdminPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'overview' && adminStats && (
           <div className="space-y-6">
-            {/* Stats Grid */}
+            {/* Real-time Stats */}
+            <RealtimeAdminStats initialStats={adminStats} />
+            
+            {/* Legacy Stats Grid (fallback) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <div className="flex items-center">
@@ -509,6 +513,3 @@ const AdminPage: React.FC = () => {
 };
 
 export default AdminPage;
-
-
-

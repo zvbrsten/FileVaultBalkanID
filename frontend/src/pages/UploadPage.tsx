@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../hooks/useNotification';
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_FOLDERS, CREATE_FOLDER } from '../api/queries';
+import RealtimeUploadProgressList from '../components/RealtimeUploadProgressList';
 
 interface UploadProgress {
   file: File;
@@ -12,7 +13,7 @@ interface UploadProgress {
 }
 
 const UploadPage: React.FC = () => {
-  const { user } = useAuth();
+  useAuth();
   const { addNotification } = useNotification();
   const token = localStorage.getItem('token');
   const [files, setFiles] = useState<File[]>([]);
@@ -26,7 +27,7 @@ const UploadPage: React.FC = () => {
   const [newFolderName, setNewFolderName] = useState('');
   
   // GraphQL queries and mutations
-  const { data: foldersData, loading: foldersLoading, refetch: refetchFolders } = useQuery(GET_FOLDERS);
+  const { data: foldersData, refetch: refetchFolders } = useQuery(GET_FOLDERS);
   const [createFolder] = useMutation(CREATE_FOLDER);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
@@ -468,7 +469,10 @@ const UploadPage: React.FC = () => {
           </div>
         )}
 
-        {/* Upload Progress */}
+        {/* Real-time Upload Progress */}
+        <RealtimeUploadProgressList />
+
+        {/* Legacy Upload Progress (fallback) */}
         {uploadProgress.length > 0 && (
           <div className="glass rounded-lg shadow-lg p-6 hover-lift animate-slide-up">
             <div className="mb-4">
@@ -538,6 +542,3 @@ const UploadPage: React.FC = () => {
 };
 
 export default UploadPage;
-
-
-
