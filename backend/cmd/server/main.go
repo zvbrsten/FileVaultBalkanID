@@ -25,9 +25,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// Define custom type for context key to avoid collisions
+type contextKey string
+
+const userContextKey contextKey = "user"
+
 func main() {
 	// Load configuration
-	cfg := config.Load()
+	cfg := config.LoadConfig()
 
 	// Initialize database
 	db, err := database.Connect(cfg.DatabaseURL)
@@ -126,30 +131,22 @@ func main() {
 
 	// GraphQL endpoint (no auth middleware - handled internally)
 	r.POST("/query", func(c *gin.Context) {
-		fmt.Printf("DEBUG: POST /query received - Content-Type: %s\n", c.GetHeader("Content-Type"))
 		// Try to authenticate user if token is present
 		authHeader := c.GetHeader("Authorization")
 		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
 			token := strings.TrimPrefix(authHeader, "Bearer ")
 			if user, err := authService.ValidateToken(token); err == nil {
 				// Set user in both request context and Gin context
-				ctx := context.WithValue(c.Request.Context(), "user", user)
+				ctx := context.WithValue(c.Request.Context(), userContextKey, user)
 				c.Request = c.Request.WithContext(ctx)
 				c.Set("user", user) // Also set in Gin context for GraphQL server
-				fmt.Printf("DEBUG: User authenticated and set in context: %+v\n", user)
-			} else {
-				fmt.Printf("DEBUG: Token validation failed: %v\n", err)
 			}
-		} else {
-			fmt.Println("DEBUG: No valid Authorization header found")
 		}
 		graphqlServer.HandleGraphQL(c)
 	})
 
 	// File upload endpoint with detailed debug statements
 	api.POST("/upload", func(c *gin.Context) {
-		fmt.Println("=== UPLOAD ENDPOINT DEBUG START ===")
-		fmt.Printf("DEBUG: Upload endpoint called - Method: %s, Content-Type: %s\n", c.Request.Method, c.GetHeader("Content-Type"))
 
 		// Get user from context
 		user, exists := c.Get("user")

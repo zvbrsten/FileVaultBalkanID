@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// Load configuration
-	cfg := config.Load()
+	cfg := config.LoadConfig()
 
 	// Initialize database
 	db, err := database.Connect(cfg.DatabaseURL)

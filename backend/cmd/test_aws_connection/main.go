@@ -13,7 +13,7 @@ func main() {
 	fmt.Println("=== AWS Connection Test ===")
 
 	// Load configuration
-	cfg := config.Load()
+	cfg := config.LoadConfig()
 	fmt.Printf("AWS Region: %s\n", cfg.AWSRegion)
 	fmt.Printf("S3 Bucket: %s\n", cfg.S3BucketName)
 	fmt.Printf("Access Key ID: %s...\n", cfg.AWSAccessKeyID[:10])

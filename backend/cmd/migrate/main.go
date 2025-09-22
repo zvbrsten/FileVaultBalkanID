@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// Load configuration
-	cfg := config.Load()
+	cfg := config.LoadConfig()
 
 	// Run migrations
 	if err := database.Migrate(cfg.DatabaseURL); err != nil {
