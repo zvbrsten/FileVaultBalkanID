@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import RotatingText from '../components/ui/RotatingText';
 
 const SignupPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -40,8 +41,24 @@ const SignupPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 pt-28">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-sm w-full space-y-8">
+        {/* FileVault Logo */}
+        <div className="flex justify-center">
+          <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange to-orange-dark text-white rounded-lg shadow-lg font-semibold text-2xl">
+            <span className="text-white">File</span>
+            <div className="w-20 overflow-hidden">
+              <RotatingText
+                texts={['Vault', 'Secure', 'Cloud', 'Storage']}
+                mainClassName="text-white overflow-hidden"
+                staggerFrom="last"
+                staggerDuration={0.05}
+                rotationInterval={2000}
+              />
+            </div>
+          </div>
+        </div>
+        
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account

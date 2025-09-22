@@ -30,3 +30,4 @@ npm test -- --testPathPattern=integration --coverage --watchAll=false
 
 echo ✅ All tests completed!
 echo 📊 Coverage report generated in coverage/ directory
+

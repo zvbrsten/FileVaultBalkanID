@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import RotatingText from '../components/ui/RotatingText';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -27,13 +28,29 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-28 flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-md">
-      <div className="max-w-sm w-full space-y-6">
-        <div>
-          <h2 className="mt-6 text-center text-2xl font-medium text-cream-800">
-            Sign in to FileVault
-          </h2>
+        {/* FileVault Logo */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange to-orange-dark text-white rounded-lg shadow-lg font-semibold text-2xl">
+            <span className="text-white">File</span>
+            <div className="w-20 overflow-hidden">
+              <RotatingText
+                texts={['Vault', 'Secure', 'Cloud', 'Storage']}
+                mainClassName="text-white overflow-hidden"
+                staggerFrom="last"
+                staggerDuration={0.05}
+                rotationInterval={2000}
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div className="max-w-sm w-full space-y-6">
+          <div>
+            <h2 className="mt-6 text-center text-2xl font-medium text-cream-800">
+              Sign in to your account
+            </h2>
           <p className="mt-2 text-center text-sm text-cream-700">
             Or{' '}
             <Link

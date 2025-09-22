@@ -29,3 +29,4 @@ module.exports = {
     'node_modules/(?!(.*\\.mjs$|@apollo|@testing-library))',
   ],
 };
+

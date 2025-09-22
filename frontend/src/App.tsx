@@ -37,14 +37,14 @@ function App() {
               <Routes>
                 {/* Public routes (no navbar) */}
                 <Route path="/share/:token" element={<PublicFileViewer shareToken={window.location.pathname.split('/')[2]} />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
                 
-                {/* All other routes (with navbar) */}
+                {/* Protected routes (with navbar) */}
                 <Route path="/*" element={
                   <>
                     <ModernNavbar />
                     <Routes>
-                      <Route path="/login" element={<LoginPage />} />
-                      <Route path="/signup" element={<SignupPage />} />
                       <Route 
                         path="/dashboard" 
                         element={
