@@ -2,8 +2,10 @@ import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 
 // Simple HTTP link for GraphQL queries (no file uploads)
+const graphqlUrl = process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query';
+console.log('GraphQL URL:', graphqlUrl); // Debug log
 const httpLink = createHttpLink({
-  uri: process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query',
+  uri: graphqlUrl,
 });
 
 const authLink = setContext((_, { headers }) => {
