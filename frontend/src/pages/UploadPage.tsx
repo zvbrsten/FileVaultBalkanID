@@ -30,7 +30,7 @@ const UploadPage: React.FC = () => {
   const { data: foldersData, refetch: refetchFolders } = useQuery(GET_FOLDERS);
   const [createFolder] = useMutation(CREATE_FOLDER);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+  const API_URL = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
   
   // Folder management functions
   const handleCreateFolder = async () => {

@@ -116,7 +116,7 @@ const SearchPage: React.FC = () => {
       if (filters.sortBy) variables.sortBy = filters.sortBy;
       if (filters.sortOrder) variables.sortOrder = filters.sortOrder;
 
-      const response = await fetch('http://localhost:8080/query', {
+      const response = await fetch(process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +175,8 @@ const SearchPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/files/${fileId}/download`, {
+      const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+      const response = await fetch(`${baseUrl}/files/${fileId}/download`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -218,7 +219,7 @@ const SearchPage: React.FC = () => {
   const deleteFile = async (fileId: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/query', {
+      const response = await fetch(process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

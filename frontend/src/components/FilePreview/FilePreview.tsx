@@ -119,7 +119,8 @@ const FilePreview: React.FC<FilePreviewProps> = ({
 
   const getPreviewContent = () => {
     const token = localStorage.getItem('token');
-    const previewUrl = `http://localhost:8080/files/${file.id}/preview`;
+    const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+    const previewUrl = `${baseUrl}/files/${file.id}/preview`;
 
     if (file.mimeType.startsWith('image/')) {
       return (

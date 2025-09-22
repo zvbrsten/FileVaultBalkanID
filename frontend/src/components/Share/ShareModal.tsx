@@ -57,7 +57,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ file, isOpen, onClose }) => {
   const loadUsers = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/users', {
+      const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+      const response = await fetch(`${baseUrl}/api/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -141,7 +142,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ file, isOpen, onClose }) => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/files/${file.id}/share/user`, {
+      const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+      const response = await fetch(`${baseUrl}/api/files/${file.id}/share/user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

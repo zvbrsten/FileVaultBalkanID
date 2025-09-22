@@ -73,7 +73,7 @@ const FileShareModal: React.FC<FileShareModalProps> = ({ isOpen, onClose, file }
         variables.maxDownloads = maxDownloads;
       }
 
-      const response = await fetch('http://localhost:8080/query', {
+      const response = await fetch(process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +137,7 @@ const FileShareModal: React.FC<FileShareModalProps> = ({ isOpen, onClose, file }
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch('http://localhost:8080/query', {
+      const response = await fetch(process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

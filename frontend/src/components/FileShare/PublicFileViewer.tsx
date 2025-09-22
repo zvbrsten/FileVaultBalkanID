@@ -30,7 +30,8 @@ const PublicFileViewer: React.FC<PublicFileViewerProps> = ({ shareToken }) => {
 
   const fetchFileInfo = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/files/share/${shareToken}/info`);
+      const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+      const response = await fetch(`${baseUrl}/api/files/share/${shareToken}/info`);
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -58,7 +59,8 @@ const PublicFileViewer: React.FC<PublicFileViewerProps> = ({ shareToken }) => {
     setDownloading(true);
     try {
       // Redirect to the download endpoint
-      window.location.href = `http://localhost:8080/api/files/share/${shareToken}`;
+      const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+      window.location.href = `${baseUrl}/api/files/share/${shareToken}`;
     } catch (err) {
       setError('Failed to download file');
     } finally {

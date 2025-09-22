@@ -211,7 +211,8 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
 
     for (const file of selectedFilesList) {
       try {
-        const response = await fetch(`http://localhost:8080/files/${file.id}/download`, {
+        const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+        const response = await fetch(`${baseUrl}/files/${file.id}/download`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`

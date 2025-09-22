@@ -105,7 +105,8 @@ const FolderList: React.FC<FolderListProps> = ({ onFileSelect, refetchFiles }) =
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/files/${fileId}/download`, {
+      const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+      const response = await fetch(`${baseUrl}/files/${fileId}/download`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`

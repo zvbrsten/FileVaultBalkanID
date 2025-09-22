@@ -90,7 +90,7 @@ const AdminPage: React.FC = () => {
       };
 
       // Fetch admin stats
-      const statsResponse = await fetch('http://localhost:8080/query', {
+      const statsResponse = await fetch(process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query', {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -119,7 +119,7 @@ const AdminPage: React.FC = () => {
       }
 
       // Fetch users
-      const usersResponse = await fetch('http://localhost:8080/query', {
+      const usersResponse = await fetch(process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query', {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -147,7 +147,7 @@ const AdminPage: React.FC = () => {
       }
 
       // Fetch system health
-      const healthResponse = await fetch('http://localhost:8080/query', {
+      const healthResponse = await fetch(process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query', {
         method: 'POST',
         headers,
         body: JSON.stringify({

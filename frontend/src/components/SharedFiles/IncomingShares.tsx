@@ -54,7 +54,8 @@ const IncomingShares: React.FC<IncomingSharesProps> = ({ className = '' }) => {
   const loadIncomingShares = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/user-shares/incoming', {
+      const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+      const response = await fetch(`${baseUrl}/api/user-shares/incoming`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -79,7 +80,8 @@ const IncomingShares: React.FC<IncomingSharesProps> = ({ className = '' }) => {
   const markAsRead = async (shareId: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/user-shares/${shareId}/read`, {
+      const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+      const response = await fetch(`${baseUrl}/api/user-shares/${shareId}/read`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -100,7 +102,8 @@ const IncomingShares: React.FC<IncomingSharesProps> = ({ className = '' }) => {
   const downloadFile = async (shareId: string, fileName: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/user-shares/${shareId}/download`, {
+      const baseUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '') || 'http://localhost:8080';
+      const response = await fetch(`${baseUrl}/api/user-shares/${shareId}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

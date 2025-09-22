@@ -29,7 +29,7 @@ const FileStats: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/query`, {
+      const response = await fetch(process.env.REACT_APP_GRAPHQL_URL || 'http://localhost:8080/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
