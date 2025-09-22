@@ -241,6 +241,97 @@ func main() {
 		})
 	})
 
+	// File preview endpoint (serves file for inline viewing)
+	r.GET("/files/:id/preview", func(c *gin.Context) {
+		fileID := c.Param("id")
+		token := c.Query("token")
+
+		var user *models.User
+		var err error
+
+		// Validate token if provided
+		if token != "" {
+			// Parse and validate JWT token
+			user, err = authService.ValidateToken(token)
+			if err != nil {
+				c.JSON(401, gin.H{"error": "Invalid token"})
+				return
+			}
+		} else {
+			// No token provided, try to get from Authorization header
+			authHeader := c.GetHeader("Authorization")
+			if authHeader == "" {
+				c.JSON(401, gin.H{"error": "Authentication required"})
+				return
+			}
+
+			// Extract token from "Bearer <token>"
+			tokenParts := strings.Split(authHeader, " ")
+			if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+				c.JSON(401, gin.H{"error": "Invalid authorization header"})
+				return
+			}
+
+			// Parse and validate JWT token
+			user, err = authService.ValidateToken(tokenParts[1])
+			if err != nil {
+				c.JSON(401, gin.H{"error": "Invalid token"})
+				return
+			}
+		}
+
+		// Get file from database
+		file, err := fileRepo.GetByID(uuid.MustParse(fileID))
+		if err != nil {
+			c.JSON(404, gin.H{"error": "File not found"})
+			return
+		}
+
+		// Check if user owns the file
+		if file.UploaderID != user.ID {
+			c.JSON(403, gin.H{"error": "Access denied"})
+			return
+		}
+
+		// Check if file has S3 key (new files) or use filename (legacy files)
+		s3Key := file.S3Key
+		if s3Key == "" {
+			// Legacy file without S3 key, try local file
+			localFilePath := filepath.Join(cfg.UploadPath, file.Filename)
+			if _, err := os.Stat(localFilePath); err == nil {
+				// Set headers for inline viewing
+				c.Header("Content-Type", file.MimeType)
+				c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", file.OriginalName))
+				c.Header("Content-Length", fmt.Sprintf("%d", file.Size))
+				c.File(localFilePath)
+				return
+			} else {
+				c.JSON(404, gin.H{"error": "File not found on storage"})
+				return
+			}
+		}
+
+		// Download file from S3 and serve it directly for preview
+		result, err := s3Service.GetClient().GetObject(c.Request.Context(), &s3.GetObjectInput{
+			Bucket: aws.String(cfg.S3BucketName),
+			Key:    aws.String(s3Key),
+		})
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to download file from S3"})
+			return
+		}
+		defer result.Body.Close()
+
+		// Set appropriate headers for inline viewing
+		c.Header("Content-Type", file.MimeType)
+		c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", file.OriginalName))
+		c.Header("Content-Length", fmt.Sprintf("%d", file.Size))
+		c.Header("Cache-Control", "public, max-age=3600") // Cache for 1 hour
+
+		// Stream the file content
+		io.Copy(c.Writer, result.Body)
+	})
+
 	// Simple file download endpoint
 	r.GET("/files/:id/download", authMiddleware, func(c *gin.Context) {
 		fileID := c.Param("id")
