@@ -52,3 +52,4 @@ echo "📊 Coverage report generated: coverage.html"
 # Show coverage summary
 echo "📈 Coverage Summary:"
 go tool cover -func=coverage.out | tail -1
+

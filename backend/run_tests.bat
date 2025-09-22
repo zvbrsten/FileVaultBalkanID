@@ -50,3 +50,4 @@ echo 📊 Coverage report generated: coverage.html
 REM Show coverage summary
 echo 📈 Coverage Summary:
 go tool cover -func=coverage.out | findstr total
+
