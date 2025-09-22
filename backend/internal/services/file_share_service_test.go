@@ -125,7 +125,7 @@ func (m *MockS3Service) GetClient() interface{} {
 func TestFileShareService_ShareFileWithUser(t *testing.T) {
 	// This test is simplified to avoid complex mocking
 	// In a real scenario, you would mock all dependencies properly
-	
+
 	// Setup
 	mockUserFileShareRepo := new(MockUserFileShareRepository)
 	mockUserRepo := new(MockUserRepository)
@@ -143,7 +143,7 @@ func TestFileShareService_ShareFileWithUser(t *testing.T) {
 	assert.NotNil(t, service)
 	assert.Equal(t, "test-bucket", service.bucketName)
 	assert.Equal(t, "http://localhost:8080", service.baseURL)
-	
+
 	// Note: Full integration test would require proper mocking of all dependencies
 	// For now, we just verify the service can be created
 }

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,34 +17,44 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockFileShareService is a mock implementation of FileShareService
+// MockFileShareService is a mock implementation of FileShareServiceInterface
 type MockFileShareService struct {
 	mock.Mock
 }
 
-func (m *MockFileShareService) CreateFileShare(ctx context.Context, req *models.CreateFileShareRequest) (*models.FileShareResponse, error) {
-	args := m.Called(ctx, req)
+func (m *MockFileShareService) CreateFileShare(userID uuid.UUID, req *models.CreateFileShareRequest) (*models.FileShareResponse, error) {
+	args := m.Called(userID, req)
 	return args.Get(0).(*models.FileShareResponse), args.Error(1)
 }
 
-func (m *MockFileShareService) UpdateFileShare(ctx context.Context, id uuid.UUID, req *models.CreateFileShareRequest) (*models.FileShareResponse, error) {
-	args := m.Called(ctx, id, req)
-	return args.Get(0).(*models.FileShareResponse), args.Error(1)
-}
-
-func (m *MockFileShareService) DeleteFileShare(ctx context.Context, id uuid.UUID) error {
-	args := m.Called(ctx, id)
+func (m *MockFileShareService) UpdateFileShare(userID, shareID uuid.UUID, isActive *bool, expiresAt *time.Time, maxDownloads *int) error {
+	args := m.Called(userID, shareID, isActive, expiresAt, maxDownloads)
 	return args.Error(0)
 }
 
-func (m *MockFileShareService) GetFileShareStats(ctx context.Context, id uuid.UUID) (*models.FileShareResponse, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(*models.FileShareResponse), args.Error(1)
+func (m *MockFileShareService) DeleteFileShare(userID, id uuid.UUID) error {
+	args := m.Called(userID, id)
+	return args.Error(0)
 }
 
-func (m *MockFileShareService) ShareFileWithUser(fromUserID, fileID, toUserID uuid.UUID, message *string) error {
+func (m *MockFileShareService) GetFileShareStats(userID, shareID uuid.UUID) (map[string]interface{}, error) {
+	args := m.Called(userID, shareID)
+	return args.Get(0).(map[string]interface{}), args.Error(1)
+}
+
+func (m *MockFileShareService) DownloadSharedFile(token, ipAddress, userAgent string) (*models.File, *http.Response, error) {
+	args := m.Called(token, ipAddress, userAgent)
+	return args.Get(0).(*models.File), args.Get(1).(*http.Response), args.Error(2)
+}
+
+func (m *MockFileShareService) GetFileShare(token string) (*models.FileShare, error) {
+	args := m.Called(token)
+	return args.Get(0).(*models.FileShare), args.Error(1)
+}
+
+func (m *MockFileShareService) ShareFileWithUser(fromUserID, fileID, toUserID uuid.UUID, message *string) (*models.UserFileShareResponse, error) {
 	args := m.Called(fromUserID, fileID, toUserID, message)
-	return args.Error(0)
+	return args.Get(0).(*models.UserFileShareResponse), args.Error(1)
 }
 
 func (m *MockFileShareService) GetIncomingShares(userID uuid.UUID, limit, offset int) ([]*models.UserFileShareResponse, error) {
@@ -58,8 +67,8 @@ func (m *MockFileShareService) GetOutgoingShares(userID uuid.UUID, limit, offset
 	return args.Get(0).([]*models.UserFileShareResponse), args.Error(1)
 }
 
-func (m *MockFileShareService) MarkShareAsRead(shareID uuid.UUID) error {
-	args := m.Called(shareID)
+func (m *MockFileShareService) MarkShareAsRead(shareID, userID uuid.UUID) error {
+	args := m.Called(shareID, userID)
 	return args.Error(0)
 }
 
@@ -68,8 +77,8 @@ func (m *MockFileShareService) GetUnreadShareCount(userID uuid.UUID) (int, error
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockFileShareService) DeleteUserFileShare(shareID uuid.UUID) error {
-	args := m.Called(shareID)
+func (m *MockFileShareService) DeleteUserFileShare(shareID, userID uuid.UUID) error {
+	args := m.Called(shareID, userID)
 	return args.Error(0)
 }
 
@@ -117,7 +126,7 @@ func TestFileShareHandler_CreateFileShare(t *testing.T) {
 	}
 
 	// Mock expectations
-	mockService.On("CreateFileShare", mock.AnythingOfType("*context.emptyCtx"), &reqBody).Return(mockResponse, nil)
+	mockService.On("CreateFileShare", mock.AnythingOfType("uuid.UUID"), &reqBody).Return(mockResponse, nil)
 
 	// Execute
 	req, _ := http.NewRequest("POST", "/api/shares/", bytes.NewBuffer(reqJSON))
@@ -151,39 +160,20 @@ func TestFileShareHandler_UpdateFileShare(t *testing.T) {
 
 	// Test data
 	shareID := uuid.New()
-	fileID := uuid.New()
 	expiresAt := time.Now().Add(48 * time.Hour)
 	maxDownloads := 20
+	isActive := true
 
-	reqBody := models.CreateFileShareRequest{
-		FileID:       fileID,
-		ExpiresAt:    &expiresAt,
-		MaxDownloads: &maxDownloads,
+	reqBody := map[string]interface{}{
+		"isActive":     isActive,
+		"expiresAt":    expiresAt,
+		"maxDownloads": maxDownloads,
 	}
 
 	reqJSON, _ := json.Marshal(reqBody)
 
-	// Mock response
-	mockResponse := &models.FileShareResponse{
-		ID:            shareID,
-		FileID:        fileID,
-		ShareToken:    "updated-token-456",
-		ShareURL:      "http://localhost:8080/api/files/share/updated-token-456",
-		IsActive:      true,
-		ExpiresAt:     &expiresAt,
-		DownloadCount: 5,
-		MaxDownloads:  &maxDownloads,
-		CreatedAt:     time.Now(),
-		File: &models.File{
-			ID:           fileID,
-			OriginalName: "updated.pdf",
-			Size:         2048,
-			MimeType:     "application/pdf",
-		},
-	}
-
 	// Mock expectations
-	mockService.On("UpdateFileShare", mock.AnythingOfType("*context.emptyCtx"), shareID, &reqBody).Return(mockResponse, nil)
+	mockService.On("UpdateFileShare", mock.AnythingOfType("uuid.UUID"), shareID, &isActive, &expiresAt, &maxDownloads).Return(nil)
 
 	// Execute
 	req, _ := http.NewRequest("PUT", fmt.Sprintf("/api/shares/%s", shareID.String()), bytes.NewBuffer(reqJSON))
@@ -195,11 +185,10 @@ func TestFileShareHandler_UpdateFileShare(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response models.FileShareResponse
+	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, mockResponse.ID, response.ID)
-	assert.Equal(t, mockResponse.ShareToken, response.ShareToken)
+	assert.Equal(t, "File share updated successfully", response["message"])
 
 	mockService.AssertExpectations(t)
 }
@@ -219,7 +208,7 @@ func TestFileShareHandler_DeleteFileShare(t *testing.T) {
 	shareID := uuid.New()
 
 	// Mock expectations
-	mockService.On("DeleteFileShare", mock.AnythingOfType("*context.emptyCtx"), shareID).Return(nil)
+	mockService.On("DeleteFileShare", mock.AnythingOfType("uuid.UUID"), shareID).Return(nil)
 
 	// Execute
 	req, _ := http.NewRequest("DELETE", fmt.Sprintf("/api/shares/%s", shareID.String()), nil)
@@ -251,27 +240,16 @@ func TestFileShareHandler_GetFileShareStats(t *testing.T) {
 
 	// Test data
 	shareID := uuid.New()
-	fileID := uuid.New()
 
 	// Mock response
-	mockResponse := &models.FileShareResponse{
-		ID:            shareID,
-		FileID:        fileID,
-		ShareToken:    "stats-token-789",
-		ShareURL:      "http://localhost:8080/api/files/share/stats-token-789",
-		IsActive:      true,
-		DownloadCount: 15,
-		CreatedAt:     time.Now(),
-		File: &models.File{
-			ID:           fileID,
-			OriginalName: "stats.pdf",
-			Size:         4096,
-			MimeType:     "application/pdf",
-		},
+	mockResponse := map[string]interface{}{
+		"downloadCount": 15,
+		"shareToken":    "stats-token-789",
+		"isActive":      true,
 	}
 
 	// Mock expectations
-	mockService.On("GetFileShareStats", mock.AnythingOfType("*context.emptyCtx"), shareID).Return(mockResponse, nil)
+	mockService.On("GetFileShareStats", mock.AnythingOfType("uuid.UUID"), shareID).Return(mockResponse, nil)
 
 	// Execute
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/api/shares/%s/stats", shareID.String()), nil)
@@ -282,11 +260,11 @@ func TestFileShareHandler_GetFileShareStats(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response models.FileShareResponse
+	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, mockResponse.ID, response.ID)
-	assert.Equal(t, mockResponse.DownloadCount, response.DownloadCount)
+	assert.Equal(t, mockResponse["downloadCount"], response["downloadCount"])
+	assert.Equal(t, mockResponse["shareToken"], response["shareToken"])
 
 	mockService.AssertExpectations(t)
 }
@@ -341,7 +319,7 @@ func TestFileShareHandler_CreateFileShare_ServiceError(t *testing.T) {
 	reqJSON, _ := json.Marshal(reqBody)
 
 	// Mock expectations - service returns error
-	mockService.On("CreateFileShare", mock.AnythingOfType("*context.emptyCtx"), &reqBody).Return((*models.FileShareResponse)(nil), fmt.Errorf("service error"))
+	mockService.On("CreateFileShare", mock.AnythingOfType("uuid.UUID"), &reqBody).Return((*models.FileShareResponse)(nil), fmt.Errorf("service error"))
 
 	// Execute
 	req, _ := http.NewRequest("POST", "/api/shares/", bytes.NewBuffer(reqJSON))

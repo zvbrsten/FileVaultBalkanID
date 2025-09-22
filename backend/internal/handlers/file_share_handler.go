@@ -12,13 +12,29 @@ import (
 	"github.com/google/uuid"
 )
 
+// FileShareServiceInterface defines the interface for file share service
+type FileShareServiceInterface interface {
+	CreateFileShare(userID uuid.UUID, req *models.CreateFileShareRequest) (*models.FileShareResponse, error)
+	UpdateFileShare(userID, shareID uuid.UUID, isActive *bool, expiresAt *time.Time, maxDownloads *int) error
+	DeleteFileShare(userID, id uuid.UUID) error
+	GetFileShareStats(userID, shareID uuid.UUID) (map[string]interface{}, error)
+	DownloadSharedFile(token, ipAddress, userAgent string) (*models.File, *http.Response, error)
+	GetFileShare(token string) (*models.FileShare, error)
+	ShareFileWithUser(fromUserID, fileID, toUserID uuid.UUID, message *string) (*models.UserFileShareResponse, error)
+	GetIncomingShares(userID uuid.UUID, limit, offset int) ([]*models.UserFileShareResponse, error)
+	GetOutgoingShares(userID uuid.UUID, limit, offset int) ([]*models.UserFileShareResponse, error)
+	MarkShareAsRead(shareID, userID uuid.UUID) error
+	GetUnreadShareCount(userID uuid.UUID) (int, error)
+	DeleteUserFileShare(shareID, userID uuid.UUID) error
+}
+
 // FileShareHandler handles file sharing HTTP endpoints
 type FileShareHandler struct {
-	fileShareService *services.FileShareService
+	fileShareService FileShareServiceInterface
 }
 
 // NewFileShareHandler creates a new file share handler
-func NewFileShareHandler(fileShareService *services.FileShareService) *FileShareHandler {
+func NewFileShareHandler(fileShareService FileShareServiceInterface) *FileShareHandler {
 	return &FileShareHandler{
 		fileShareService: fileShareService,
 	}

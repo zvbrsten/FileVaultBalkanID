@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"filevault/internal/database"
+	"filevault/internal/handlers"
 	"filevault/internal/models"
 	"filevault/internal/repositories"
 	"filevault/internal/services"
@@ -24,18 +26,18 @@ import (
 
 // TestDatabase is a test database setup
 type TestDatabase struct {
-	db *database.Database
+	db *sql.DB
 }
 
 func setupTestDatabase(t *testing.T) *TestDatabase {
 	// Use test database
 	testDBURL := "postgres://filevault:password123@localhost:5432/filevault_test?sslmode=disable"
 
-	db, err := database.New(testDBURL)
+	db, err := database.Connect(testDBURL)
 	require.NoError(t, err)
 
 	// Run migrations
-	err = db.RunMigrations()
+	err = database.Migrate(testDBURL)
 	require.NoError(t, err)
 
 	return &TestDatabase{db: db}
@@ -43,18 +45,18 @@ func setupTestDatabase(t *testing.T) *TestDatabase {
 
 func (td *TestDatabase) cleanup(t *testing.T) {
 	// Clean up test data
-	_, err := td.db.GetDB().Exec("DELETE FROM user_file_shares")
+	_, err := td.db.Exec("DELETE FROM user_file_shares")
 	require.NoError(t, err)
 
-	_, err = td.db.GetDB().Exec("DELETE FROM files")
+	_, err = td.db.Exec("DELETE FROM files")
 	require.NoError(t, err)
 
-	_, err = td.db.GetDB().Exec("DELETE FROM users WHERE email != 'admin@filevault.com'")
+	_, err = td.db.Exec("DELETE FROM users WHERE email != 'admin@filevault.com'")
 	require.NoError(t, err)
 }
 
-func createTestUser(t *testing.T, db *database.Database, username, email string) *models.User {
-	userRepo := repositories.NewUserRepository(db.GetDB())
+func createTestUser(t *testing.T, db *sql.DB, username, email string) *models.User {
+	userRepo := repositories.NewUserRepository(db)
 
 	user := &models.User{
 		ID:        uuid.New(),
@@ -72,8 +74,8 @@ func createTestUser(t *testing.T, db *database.Database, username, email string)
 	return user
 }
 
-func createTestFile(t *testing.T, db *database.Database, userID uuid.UUID, filename string) *models.File {
-	fileRepo := repositories.NewFileRepository(db.GetDB())
+func createTestFile(t *testing.T, db *sql.DB, userID uuid.UUID, filename string) *models.File {
+	fileRepo := repositories.NewFileRepository(db)
 
 	file := &models.File{
 		ID:           uuid.New(),
@@ -112,26 +114,26 @@ func TestFileSharingIntegration(t *testing.T) {
 	file := createTestFile(t, testDB.db, user1.ID, "test-document.pdf")
 
 	// Setup services
-	userRepo := repositories.NewUserRepository(testDB.db.GetDB())
-	userFileShareRepo := repositories.NewUserFileShareRepository(testDB.db.GetDB())
-	fileRepo := repositories.NewFileRepository(testDB.db.GetDB())
+	userRepo := repositories.NewUserRepository(testDB.db)
+	userFileShareRepo := repositories.NewUserFileShareRepository(testDB.db)
+	fileRepo := repositories.NewFileRepository(testDB.db)
+	fileShareRepo := repositories.NewFileShareRepository(testDB.db)
 
-	// Mock S3 service for testing
-	mockS3Service := &MockS3Service{}
-
-	fileShareService := services.NewFileShareService(
+	fileShareService, err := services.NewFileShareService(
+		fileShareRepo,
 		userFileShareRepo,
+		fileRepo,
 		userRepo,
-		mockS3Service,
-		"test-bucket",
-		"http://localhost:8080",
+		"us-east-1", "test-key", "test-secret", "test-bucket", "http://localhost:8080",
+		nil, // websocket service
 	)
+	require.NoError(t, err)
 
 	// Test 1: Share file with user
 	t.Run("ShareFileWithUser", func(t *testing.T) {
 		message := "Please review this document"
 
-		err := fileShareService.ShareFileWithUser(user1.ID, file.ID, user2.ID, &message)
+		_, err := fileShareService.ShareFileWithUser(user1.ID, file.ID, user2.ID, &message)
 		assert.NoError(t, err)
 	})
 
@@ -166,7 +168,7 @@ func TestFileSharingIntegration(t *testing.T) {
 		shareID := shares[0].ID
 
 		// Mark as read
-		err = fileShareService.MarkShareAsRead(shareID)
+		err = fileShareService.MarkShareAsRead(shareID, user2.ID)
 		assert.NoError(t, err)
 
 		// Verify it's marked as read
@@ -182,7 +184,7 @@ func TestFileSharingIntegration(t *testing.T) {
 		user3 := createTestUser(t, testDB.db, "user3", "user3@test.com")
 		file2 := createTestFile(t, testDB.db, user1.ID, "test-document-2.pdf")
 
-		err := fileShareService.ShareFileWithUser(user1.ID, file2.ID, user3.ID, nil)
+		_, err := fileShareService.ShareFileWithUser(user1.ID, file2.ID, user3.ID, nil)
 		assert.NoError(t, err)
 
 		// Check unread count for user3
@@ -206,7 +208,7 @@ func TestFileSharingIntegration(t *testing.T) {
 		shareID := shares[0].ID
 
 		// Delete the share
-		err = fileShareService.DeleteUserFileShare(shareID)
+		err = fileShareService.DeleteUserFileShare(shareID, user1.ID)
 		assert.NoError(t, err)
 
 		// Verify it's deleted
@@ -234,18 +236,20 @@ func TestFileSharingAPIEndpoints(t *testing.T) {
 	file := createTestFile(t, testDB.db, user1.ID, "api-test-document.pdf")
 
 	// Setup services
-	userRepo := repositories.NewUserRepository(testDB.db.GetDB())
-	userFileShareRepo := repositories.NewUserFileShareRepository(testDB.db.GetDB())
+	userRepo := repositories.NewUserRepository(testDB.db)
+	userFileShareRepo := repositories.NewUserFileShareRepository(testDB.db)
+	fileRepo := repositories.NewFileRepository(testDB.db)
+	fileShareRepo := repositories.NewFileShareRepository(testDB.db)
 
-	mockS3Service := &MockS3Service{}
-
-	fileShareService := services.NewFileShareService(
+	fileShareService, err := services.NewFileShareService(
+		fileShareRepo,
 		userFileShareRepo,
+		fileRepo,
 		userRepo,
-		mockS3Service,
-		"test-bucket",
-		"http://localhost:8080",
+		"us-east-1", "test-key", "test-secret", "test-bucket", "http://localhost:8080",
+		nil, // websocket service
 	)
+	require.NoError(t, err)
 
 	// Setup router
 	gin.SetMode(gin.TestMode)
@@ -258,7 +262,9 @@ func TestFileSharingAPIEndpoints(t *testing.T) {
 	})
 
 	// Register routes
-	RegisterFileShareRoutes(router, fileShareService)
+	handlers.RegisterFileShareRoutes(router, fileShareService, func(c *gin.Context) {
+		c.Next() // Skip auth for testing
+	})
 
 	// Test 1: Share file with user via API
 	t.Run("ShareFileWithUserAPI", func(t *testing.T) {
