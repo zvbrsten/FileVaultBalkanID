@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from '@apollo/client';
+import { useQuery, useMutation, useLazyQuery } from '@apollo/client';
 import { GET_FOLDERS, GET_FILES_BY_FOLDER, DELETE_FILE } from '../../api/queries';
-import { Folder, FolderOpen, ChevronRight, ChevronDown, Download, Trash2, Eye, Calendar, Hash, Image, Video, Music, Archive, FileText } from 'lucide-react';
+import { Folder, FolderOpen, ChevronRight, ChevronDown, Download, Trash2, Eye, Calendar, Image, Video, Music, Archive, FileText } from 'lucide-react';
 import ShareButton from '../FileShare/ShareButton';
 import FilePreview from '../FilePreview/FilePreview';
 import { Button } from '../ui/button';
 // import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
 import { useNotification } from '../../hooks/useNotification';
 
 interface FolderItem {
@@ -25,7 +24,6 @@ interface FileItem {
   mimeType: string;
   size: number;
   hash: string;
-  isDuplicate: boolean;
   uploaderId: string;
   folderId?: string;
   createdAt: string;
@@ -40,7 +38,6 @@ interface FolderListProps {
 const FolderList: React.FC<FolderListProps> = ({ onFileSelect, refetchFiles }) => {
   const { addNotification } = useNotification();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
@@ -50,26 +47,65 @@ const FolderList: React.FC<FolderListProps> = ({ onFileSelect, refetchFiles }) =
     pollInterval: 5000,
     errorPolicy: 'all'
   });
-  const { data: filesData, loading: filesLoading, error: filesError } = useQuery(GET_FILES_BY_FOLDER, {
-    variables: { folderId: selectedFolder, limit: 100, offset: 0 },
-    skip: !selectedFolder,
-    errorPolicy: 'all',
-  });
 
   const folders = foldersData?.folders || [];
   
-  // Get unique files based on hash to avoid showing duplicates
-  const files = React.useMemo(() => {
-    const allFiles = filesData?.filesByFolder || [];
-    const seen = new Set();
-    return allFiles.filter((file: FileItem) => {
-      if (seen.has(file.hash)) {
-        return false; // Skip duplicates
-      }
-      seen.add(file.hash);
-      return true;
+  // Create a map to store files for each folder
+  const [folderFiles, setFolderFiles] = useState<Map<string, FileItem[]>>(new Map());
+  const [folderLoading, setFolderLoading] = useState<Set<string>>(new Set());
+  const [folderErrors, setFolderErrors] = useState<Map<string, string>>(new Map());
+
+  // Use lazy query to load files for specific folders
+  const [getFilesByFolder] = useLazyQuery(GET_FILES_BY_FOLDER, {
+    onCompleted: (data) => {
+      // This will be handled in the toggleFolder function
+    },
+    onError: (error) => {
+      console.error('Error loading folder files:', error);
+    }
+  });
+
+  // Function to load files for a specific folder
+  const loadFolderFiles = async (folderId: string) => {
+    if (folderFiles.has(folderId) || folderLoading.has(folderId)) {
+      return; // Already loaded or loading
+    }
+
+    setFolderLoading(prev => new Set(prev).add(folderId));
+    setFolderErrors(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(folderId);
+      return newMap;
     });
-  }, [filesData?.filesByFolder]);
+
+    try {
+      const { data } = await getFilesByFolder({
+        variables: { folderId, limit: 100, offset: 0 }
+      });
+      
+      if (data?.filesByFolder) {
+        // Get unique files based on hash to avoid showing duplicates
+        const seen = new Set();
+        const uniqueFiles = data.filesByFolder.filter((file: FileItem) => {
+          if (seen.has(file.hash)) {
+            return false; // Skip duplicates
+          }
+          seen.add(file.hash);
+          return true;
+        });
+        
+        setFolderFiles(prev => new Map(prev).set(folderId, uniqueFiles));
+      }
+    } catch (error) {
+      setFolderErrors(prev => new Map(prev).set(folderId, error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setFolderLoading(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(folderId);
+        return newSet;
+      });
+    }
+  };
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) return <Image className="w-4 h-4 text-green-500" />;
@@ -182,13 +218,12 @@ const FolderList: React.FC<FolderListProps> = ({ onFileSelect, refetchFiles }) =
   const toggleFolder = (folderId: string) => {
     const newExpanded = new Set(expandedFolders);
     if (newExpanded.has(folderId)) {
+      // Collapsing folder
       newExpanded.delete(folderId);
-      if (selectedFolder === folderId) {
-        setSelectedFolder(null);
-      }
     } else {
+      // Expanding folder - load its files
       newExpanded.add(folderId);
-      setSelectedFolder(folderId);
+      loadFolderFiles(folderId);
     }
     setExpandedFolders(newExpanded);
   };
@@ -262,16 +297,18 @@ const FolderList: React.FC<FolderListProps> = ({ onFileSelect, refetchFiles }) =
 
               {expandedFolders.has(folder.id) && (
                 <div className="border-t border-border bg-muted/30 animate-fade-in">
-                  {filesLoading ? (
+                  {folderLoading.has(folder.id) ? (
                     <div className="p-4 text-center text-muted-foreground">Loading files...</div>
-                  ) : filesError ? (
-                    <div className="p-4 text-center text-destructive">Error loading files: {filesError.message}</div>
-                  ) : files.length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground">No files in this folder</div>
-                  ) : (
-                    <div className="p-4">
-                      <div className="space-y-2">
-                        {files.map((file: FileItem, fileIndex: number) => (
+                  ) : folderErrors.has(folder.id) ? (
+                    <div className="p-4 text-center text-destructive">Error loading files: {folderErrors.get(folder.id)}</div>
+                  ) : (() => {
+                    const files = folderFiles.get(folder.id) || [];
+                    return files.length === 0 ? (
+                      <div className="p-4 text-center text-muted-foreground">No files in this folder</div>
+                    ) : (
+                      <div className="p-4">
+                        <div className="space-y-2">
+                          {files.map((file: FileItem, fileIndex: number) => (
                           <div
                             key={file.id}
                             className="flex items-center justify-between p-3 bg-card rounded border border-border hover:bg-accent/50 transition-all duration-200 hover-lift animate-scale-in"
@@ -283,16 +320,6 @@ const FolderList: React.FC<FolderListProps> = ({ onFileSelect, refetchFiles }) =
                                 <div className="font-medium text-foreground truncate">{file.originalName}</div>
                                 <div className="text-sm text-muted-foreground">{file.mimeType}</div>
                                 <div className="flex items-center space-x-2 mt-1">
-                                  <Badge variant={file.isDuplicate ? "secondary" : "default"} className="text-xs">
-                                    {file.isDuplicate ? (
-                                      <div className="flex items-center space-x-1">
-                                        <Hash className="w-3 h-3" />
-                                        <span>Duplicate</span>
-                                      </div>
-                                    ) : (
-                                      "Original"
-                                    )}
-                                  </Badge>
                                   <div className="flex items-center space-x-1 text-xs text-muted-foreground">
                                     <Calendar className="w-3 h-3" />
                                     <span>{formatDate(file.createdAt)}</span>
@@ -342,7 +369,8 @@ const FolderList: React.FC<FolderListProps> = ({ onFileSelect, refetchFiles }) =
                         ))}
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -351,32 +379,40 @@ const FolderList: React.FC<FolderListProps> = ({ onFileSelect, refetchFiles }) =
       )}
 
       {/* File Preview Dialog */}
-      {previewFile && (
-        <FilePreview
-          file={previewFile}
-          isOpen={isPreviewOpen}
-          onClose={() => {
-            setIsPreviewOpen(false);
-            setPreviewFile(null);
-          }}
-          onDownload={downloadFile}
-          onShare={(file) => {
-            // Handle share functionality
-          }}
-          onDelete={(fileId) => {
-            deleteFile(fileId, previewFile.originalName);
-            setIsPreviewOpen(false);
-            setPreviewFile(null);
-          }}
-          files={files}
-          currentIndex={files.findIndex((f: FileItem) => f.id === previewFile.id)}
-          onNavigate={(index) => {
-            if (files[index]) {
-              setPreviewFile(files[index]);
-            }
-          }}
-        />
-      )}
+      {previewFile && (() => {
+        // Find which folder this file belongs to
+        let allFiles: FileItem[] = [];
+        folderFiles.forEach((files) => {
+          allFiles = allFiles.concat(files);
+        });
+        
+        return (
+          <FilePreview
+            file={previewFile}
+            isOpen={isPreviewOpen}
+            onClose={() => {
+              setIsPreviewOpen(false);
+              setPreviewFile(null);
+            }}
+            onDownload={downloadFile}
+            onShare={(file) => {
+              // Handle share functionality
+            }}
+            onDelete={(fileId) => {
+              deleteFile(fileId, previewFile.originalName);
+              setIsPreviewOpen(false);
+              setPreviewFile(null);
+            }}
+            files={allFiles}
+            currentIndex={allFiles.findIndex((f: FileItem) => f.id === previewFile.id)}
+            onNavigate={(index) => {
+              if (allFiles[index]) {
+                setPreviewFile(allFiles[index]);
+              }
+            }}
+          />
+        );
+      })()}
     </div>
   );
 };

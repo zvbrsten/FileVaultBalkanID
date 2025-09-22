@@ -150,7 +150,7 @@ func (r *FileRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*mo
 // SearchByUserID searches files for a specific user
 func (r *FileRepository) SearchByUserID(userID uuid.UUID, searchTerm string, limit, offset int) ([]*models.File, error) {
 	query := `
-		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.s3_key, f.is_duplicate, f.uploader_id, f.created_at, f.updated_at,
+		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.s3_key, f.uploader_id, f.folder_id, f.created_at, f.updated_at,
 		       u.id, u.email, u.username, u.role, u.created_at, u.updated_at
 		FROM files f
 		LEFT JOIN users u ON f.uploader_id = u.id
@@ -204,7 +204,7 @@ func (r *FileRepository) SearchByUserID(userID uuid.UUID, searchTerm string, lim
 // GetByHash retrieves files by hash
 func (r *FileRepository) GetByHash(hash string) ([]*models.File, error) {
 	query := `
-		SELECT id, filename, original_name, mime_type, size, hash, s3_key, is_duplicate, uploader_id, created_at, updated_at
+		SELECT id, filename, original_name, mime_type, size, hash, s3_key, uploader_id, folder_id, created_at, updated_at
 		FROM files
 		WHERE hash = $1
 	`
@@ -254,7 +254,7 @@ func (r *FileRepository) Delete(id uuid.UUID) error {
 func (r *FileRepository) GetByUserIDAndFolderID(userID uuid.UUID, folderID uuid.UUID, limit, offset int) ([]*models.File, error) {
 	fmt.Printf("DEBUG: FileRepository.GetByUserIDAndFolderID called - User: %s, Folder: %s\n", userID, folderID)
 	query := `
-		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.s3_key, f.is_duplicate, f.uploader_id, f.folder_id, f.created_at, f.updated_at,
+		SELECT f.id, f.filename, f.original_name, f.mime_type, f.size, f.hash, f.s3_key, f.uploader_id, f.folder_id, f.created_at, f.updated_at,
 		       u.id, u.email, u.username, u.role, u.created_at, u.updated_at
 		FROM files f
 		LEFT JOIN users u ON f.uploader_id = u.id
