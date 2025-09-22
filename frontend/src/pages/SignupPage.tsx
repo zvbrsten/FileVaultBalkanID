@@ -82,7 +82,7 @@ const SignupPage: React.FC = () => {
           )}
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-white">
                 Email address
               </label>
               <input
@@ -98,7 +98,7 @@ const SignupPage: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="username" className="block text-sm font-medium text-white">
                 Username
               </label>
               <input
@@ -114,7 +114,7 @@ const SignupPage: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-white">
                 Password
               </label>
               <input
@@ -130,7 +130,7 @@ const SignupPage: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-white">
                 Confirm Password
               </label>
               <input
@@ -151,16 +151,16 @@ const SignupPage: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-3 px-4 border-2 border-yellow-300 text-sm font-semibold rounded-lg text-gray-900 bg-gradient-to-r from-yellow-300 to-yellow-400 hover:from-yellow-400 hover:to-yellow-500 focus:outline-none focus:ring-4 focus:ring-yellow-300 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               {loading ? 'Creating account...' : 'Create account'}
             </button>
             
             <div className="text-center">
-              <span className="text-sm text-gray-600">Already have an account? </span>
+              <span className="text-sm text-gray-200">Already have an account? </span>
               <Link
                 to="/login"
-                className="text-sm font-medium text-primary-600 hover:text-primary-500"
+                className="text-sm font-medium text-yellow-300 hover:text-yellow-200"
               >
                 Sign in here
               </Link>
