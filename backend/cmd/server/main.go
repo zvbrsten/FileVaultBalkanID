@@ -58,13 +58,30 @@ func main() {
 
 	// Initialize S3 service
 	log.Printf("DEBUG: Initializing S3Service with AWS Region: %s, Bucket: %s", cfg.AWSRegion, cfg.S3BucketName)
-	log.Printf("DEBUG: AWS Access Key ID: %s...", cfg.AWSAccessKeyID[:10])
-	log.Printf("DEBUG: AWS Secret Key: %s...", cfg.AWSSecretKey[:10])
-	s3Service, err := services.NewS3Service(cfg.AWSRegion, cfg.AWSAccessKeyID, cfg.AWSSecretKey, cfg.S3BucketName, cfg.S3BucketURL)
-	if err != nil {
-		log.Fatal("Failed to initialize S3 service:", err)
+	if len(cfg.AWSAccessKeyID) > 10 {
+		log.Printf("DEBUG: AWS Access Key ID: %s...", cfg.AWSAccessKeyID[:10])
+	} else {
+		log.Printf("DEBUG: AWS Access Key ID: %s", cfg.AWSAccessKeyID)
 	}
-	log.Printf("DEBUG: S3Service initialized successfully")
+	if len(cfg.AWSSecretKey) > 10 {
+		log.Printf("DEBUG: AWS Secret Key: %s...", cfg.AWSSecretKey[:10])
+	} else {
+		log.Printf("DEBUG: AWS Secret Key: %s", cfg.AWSSecretKey)
+	}
+	var s3Service services.S3ServiceInterface
+	var s3ServiceConcrete *services.S3Service
+	s3ServiceConcrete, err = services.NewS3Service(cfg.AWSRegion, cfg.AWSAccessKeyID, cfg.AWSSecretKey, cfg.S3BucketName, cfg.S3BucketURL)
+	if err != nil {
+		log.Printf("WARNING: Failed to initialize S3 service (running in local mode): %v", err)
+		log.Printf("WARNING: File upload/download features will not work without S3 configuration")
+		// For now, we'll just log the error and continue without S3
+		// In a production environment, you should handle this differently
+		s3Service = nil
+		s3ServiceConcrete = nil
+	} else {
+		log.Printf("DEBUG: S3Service initialized successfully")
+		s3Service = s3ServiceConcrete
+	}
 
 	// Initialize WebSocket hub
 	hub := websocket.NewHub()
@@ -77,7 +94,7 @@ func main() {
 	fileService := services.NewFileService(fileRepo, fileHashRepo, shareRepo, downloadRepo, s3Service, mimeValidationService, websocketService)
 	quotaService := services.NewQuotaService(fileRepo, cfg.StorageQuotaMB)
 	searchService := services.NewSearchService(fileRepo)
-	adminService := services.NewAdminService(userRepo, fileRepo, fileHashRepo, s3Service, websocketService)
+	adminService := services.NewAdminService(userRepo, fileRepo, fileHashRepo, s3ServiceConcrete, websocketService)
 	folderService := services.NewFolderService(folderRepo)
 
 	// Initialize file share service with S3 configuration

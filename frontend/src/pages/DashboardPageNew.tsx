@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { formatBytes, formatDate } from '../lib/utils';
 import IncomingShares from '../components/SharedFiles/IncomingShares';
+import TeamBalkanIdButton from '../components/TeamBalkanId/TeamBalkanIdButton';
 
 const DashboardPageNew: React.FC = () => {
   const { user } = useAuth();
@@ -176,6 +177,9 @@ const DashboardPageNew: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* TeamBalkanId Button */}
+      <TeamBalkanIdButton />
     </div>
   );
 };

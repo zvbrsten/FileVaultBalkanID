@@ -15,7 +15,6 @@ interface FileItem {
   mimeType: string;
   size: number;
   hash: string;
-  isDuplicate: boolean;
   uploaderId: string;
   folderId?: string;
   s3Key?: string;
