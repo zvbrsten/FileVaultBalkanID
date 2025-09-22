@@ -16,12 +16,34 @@ import (
 	"github.com/google/uuid"
 )
 
+// UserFileShareRepositoryInterface defines the interface for user file share repository
+type UserFileShareRepositoryInterface interface {
+	Create(share *models.UserFileShare) error
+	GetByID(id uuid.UUID) (*models.UserFileShare, error)
+	GetIncomingShares(userID uuid.UUID, limit, offset int) ([]*models.UserFileShare, error)
+	GetOutgoingShares(userID uuid.UUID, limit, offset int) ([]*models.UserFileShare, error)
+	MarkAsRead(id uuid.UUID) error
+	GetUnreadCount(userID uuid.UUID) (int, error)
+	Delete(id uuid.UUID) error
+	CheckIfAlreadyShared(fileID, toUserID uuid.UUID) (bool, error)
+}
+
+// UserRepositoryInterface defines the interface for user repository
+type UserRepositoryInterface interface {
+	GetByID(id uuid.UUID) (*models.User, error)
+	GetByEmail(email string) (*models.User, error)
+	Create(user *models.User) error
+	Update(user *models.User) error
+	Delete(id uuid.UUID) error
+	GetAllUsers(limit, offset int) ([]*models.User, error)
+}
+
 // FileShareService handles file sharing business logic
 type FileShareService struct {
 	fileShareRepo     *repositories.FileShareRepository
-	userFileShareRepo *repositories.UserFileShareRepository
+	userFileShareRepo UserFileShareRepositoryInterface
 	fileRepo          repositories.FileRepositoryInterface
-	userRepo          *repositories.UserRepository
+	userRepo          UserRepositoryInterface
 	s3Client          *s3.Client
 	bucketName        string
 	baseURL           string
@@ -31,9 +53,9 @@ type FileShareService struct {
 // NewFileShareService creates a new file share service
 func NewFileShareService(
 	fileShareRepo *repositories.FileShareRepository,
-	userFileShareRepo *repositories.UserFileShareRepository,
+	userFileShareRepo UserFileShareRepositoryInterface,
 	fileRepo repositories.FileRepositoryInterface,
-	userRepo *repositories.UserRepository,
+	userRepo UserRepositoryInterface,
 	awsRegion, awsAccessKey, awsSecretKey, bucketName, baseURL string,
 	websocketService *WebSocketService,
 ) (*FileShareService, error) {

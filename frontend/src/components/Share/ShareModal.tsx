@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -54,27 +54,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ file, isOpen, onClose }) => {
   const [publicShareUrl, setPublicShareUrl] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Load users when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      loadUsers();
-    }
-  }, [isOpen]);
-
-  // Filter users based on search query
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredUsers(users);
-    } else {
-      const filtered = users.filter(user => 
-        user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredUsers(filtered);
-    }
-  }, [users, searchQuery]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:8080/api/users', {
@@ -97,7 +77,27 @@ const ShareModal: React.FC<ShareModalProps> = ({ file, isOpen, onClose }) => {
         duration: 4000
       });
     }
-  };
+  }, [addNotification]);
+
+  // Load users when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadUsers();
+    }
+  }, [isOpen, loadUsers]);
+
+  // Filter users based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user => 
+        user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [users, searchQuery]);
 
   const createPublicShare = async () => {
     setIsLoading(true);

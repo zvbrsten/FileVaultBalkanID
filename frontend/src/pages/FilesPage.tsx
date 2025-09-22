@@ -20,6 +20,9 @@ const FilesPage: React.FC = () => {
     pollInterval: 5000, // Auto-refresh every 5 seconds
     errorPolicy: 'all'
   });
+  
+  // Suppress unused variable warning - refetchFolders is used for future functionality
+  void refetchFolders;
 
   const handleFileSelect = (file: any) => {
     setSelectedFile(file);

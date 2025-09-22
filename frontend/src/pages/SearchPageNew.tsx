@@ -3,8 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import AdvancedSearch from '../components/Search/AdvancedSearch';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { FileText, Image, Video, Music, Archive, Download, Trash2, Eye, Calendar, Hash } from 'lucide-react';
+import { FileText, Image, Video, Music, Archive, Download, Trash2, Eye, Calendar } from 'lucide-react';
 import { useNotification } from '../hooks/useNotification';
 import FilePreview from '../components/FilePreview/FilePreview';
 

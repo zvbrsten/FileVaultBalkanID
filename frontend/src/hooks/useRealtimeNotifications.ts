@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useWebSocket, WebSocketMessage } from './useWebSocket';
+import { useWebSocket } from './useWebSocket';
 import { useNotification } from './useNotification';
 import websocketDispatcher from '../utils/websocketDispatcher';
 
@@ -96,7 +96,7 @@ export const useRealtimeNotifications = () => {
   // Convert WebSocket URL from HTTP to WS
   const wsUrl = API_URL.replace('http://', 'ws://').replace('https://', 'wss://') + '/api/ws';
   
-  const { isConnected, connectionStatus, lastMessage, error } = useWebSocket(wsUrl);
+  const { isConnected, connectionStatus, error } = useWebSocket(wsUrl);
 
   const handleDownloadCountUpdate = useCallback((data: DownloadCountUpdate) => {
     addNotification({

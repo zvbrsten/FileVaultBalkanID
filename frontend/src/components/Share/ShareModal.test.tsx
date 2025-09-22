@@ -22,7 +22,7 @@ const mockFile = {
   size: 1024,
   hash: 'test-hash',
   uploaderId: 'test-uploader-id',
-  folderId: null,
+  folderId: undefined,
   createdAt: '2023-01-01T00:00:00Z',
   updatedAt: '2023-01-01T00:00:00Z',
   s3Key: 'test/s3-key.pdf',
