@@ -71,7 +71,8 @@ const UploadPageNew: React.FC = () => {
         formData.append('folderId', selectedFolderId);
       }
 
-      console.log('FormData created, sending request to:', 'http://localhost:8080/api/upload');
+      const uploadUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '/api/upload') || 'http://localhost:8080/api/upload';
+      console.log('FormData created, sending request to:', uploadUrl);
       console.log('Folder ID:', selectedFolderId);
 
       const xhr = new XMLHttpRequest();
@@ -100,7 +101,7 @@ const UploadPageNew: React.FC = () => {
         updateUploadFileStatus(uploadFile.id, 'error', 0, `Upload error: ${xhr.statusText}`);
       });
 
-      xhr.open('POST', 'http://localhost:8080/api/upload');
+      xhr.open('POST', uploadUrl);
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.send(formData);
 
