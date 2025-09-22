@@ -68,7 +68,7 @@ const UploadPageNew: React.FC = () => {
       const formData = new FormData();
       formData.append('file', uploadFile.file);
       if (selectedFolderId) {
-        formData.append('folderId', selectedFolderId);
+        formData.append('folder_id', selectedFolderId);
       }
 
       const uploadUrl = process.env.REACT_APP_GRAPHQL_URL?.replace('/query', '/api/upload') || 'http://localhost:8080/api/upload';
