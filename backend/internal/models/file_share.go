@@ -38,6 +38,23 @@ type CreateFileShareRequest struct {
 	MaxDownloads *int       `json:"maxDownloads"`
 }
 
+// UserFileShare represents a file shared directly with a specific user
+type UserFileShare struct {
+	ID         uuid.UUID `json:"id" db:"id"`
+	FileID     uuid.UUID `json:"fileId" db:"file_id"`
+	FromUserID uuid.UUID `json:"fromUserId" db:"from_user_id"`
+	ToUserID   uuid.UUID `json:"toUserId" db:"to_user_id"`
+	Message    *string   `json:"message" db:"message"`
+	IsRead     bool      `json:"isRead" db:"is_read"`
+	CreatedAt  time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt  time.Time `json:"updatedAt" db:"updated_at"`
+
+	// Related data (populated by joins)
+	File     *File `json:"file,omitempty" db:"-"`
+	FromUser *User `json:"fromUser,omitempty" db:"-"`
+	ToUser   *User `json:"toUser,omitempty" db:"-"`
+}
+
 // FileShareResponse represents the response for a file share
 type FileShareResponse struct {
 	ID            uuid.UUID  `json:"id"`
@@ -50,6 +67,26 @@ type FileShareResponse struct {
 	MaxDownloads  *int       `json:"maxDownloads"`
 	CreatedAt     time.Time  `json:"createdAt"`
 	File          *File      `json:"file"`
+}
+
+// CreateUserFileShareRequest represents the request to share a file with a user
+type CreateUserFileShareRequest struct {
+	FileID   uuid.UUID `json:"fileId" validate:"required"`
+	ToUserID uuid.UUID `json:"toUserId" validate:"required"`
+	Message  *string   `json:"message"`
+}
+
+// UserFileShareResponse represents the response for a user file share
+type UserFileShareResponse struct {
+	ID         uuid.UUID `json:"id"`
+	FileID     uuid.UUID `json:"fileId"`
+	FromUserID uuid.UUID `json:"fromUserId"`
+	ToUserID   uuid.UUID `json:"toUserId"`
+	Message    *string   `json:"message"`
+	IsRead     bool      `json:"isRead"`
+	CreatedAt  time.Time `json:"createdAt"`
+	File       *File     `json:"file"`
+	FromUser   *User     `json:"fromUser"`
 }
 
 // IsExpired checks if the file share has expired

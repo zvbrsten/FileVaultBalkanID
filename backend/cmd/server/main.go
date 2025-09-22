@@ -48,6 +48,7 @@ func main() {
 	shareRepo := repositories.NewShareRepository(db)
 	downloadRepo := repositories.NewDownloadRepository(db)
 	fileShareRepo := repositories.NewFileShareRepository(db)
+	userFileShareRepo := repositories.NewUserFileShareRepository(db)
 	folderRepo := repositories.NewFolderRepository(db)
 
 	// Initialize S3 service
@@ -78,7 +79,9 @@ func main() {
 	log.Printf("DEBUG: Initializing FileShareService with AWS Region: %s, Bucket: %s, BaseURL: %s", cfg.AWSRegion, cfg.S3BucketName, cfg.BaseURL)
 	fileShareService, err := services.NewFileShareService(
 		fileShareRepo,
+		userFileShareRepo,
 		fileRepo,
+		userRepo,
 		cfg.AWSRegion,
 		cfg.AWSAccessKeyID,
 		cfg.AWSSecretKey,
@@ -454,7 +457,354 @@ func main() {
 	api.GET("/ws/status", wsHandler.GetConnectionStatus)
 
 	// File sharing routes
-	handlers.RegisterFileShareRoutes(r, fileShareService)
+	handlers.RegisterFileShareRoutes(r, fileShareService, authMiddleware)
+
+	// User file sharing routes
+	api.POST("/files/:id/share/user", func(c *gin.Context) {
+		fileID := c.Param("id")
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		userModel, ok := user.(*models.User)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Invalid user data"})
+			return
+		}
+
+		var req models.CreateUserFileShareRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Parse file ID from URL
+		fileUUID, err := uuid.Parse(fileID)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Invalid file ID"})
+			return
+		}
+
+		req.FileID = fileUUID
+
+		// Share file with user
+		share, err := fileShareService.ShareFileWithUser(userModel.ID, req.FileID, req.ToUserID, req.Message)
+		if err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, gin.H{"share": share})
+	})
+
+	// Get incoming shares
+	api.GET("/user-shares/incoming", func(c *gin.Context) {
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		userModel, ok := user.(*models.User)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Invalid user data"})
+			return
+		}
+
+		limit := 50
+		offset := 0
+
+		shares, err := fileShareService.GetIncomingShares(userModel.ID, limit, offset)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, gin.H{"shares": shares})
+	})
+
+	// Get outgoing shares
+	api.GET("/user-shares/outgoing", func(c *gin.Context) {
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		userModel, ok := user.(*models.User)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Invalid user data"})
+			return
+		}
+
+		limit := 50
+		offset := 0
+
+		shares, err := fileShareService.GetOutgoingShares(userModel.ID, limit, offset)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, gin.H{"shares": shares})
+	})
+
+	// Mark share as read
+	api.PUT("/user-shares/:id/read", func(c *gin.Context) {
+		shareID := c.Param("id")
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		userModel, ok := user.(*models.User)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Invalid user data"})
+			return
+		}
+
+		shareUUID, err := uuid.Parse(shareID)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Invalid share ID"})
+			return
+		}
+
+		err = fileShareService.MarkShareAsRead(shareUUID, userModel.ID)
+		if err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, gin.H{"message": "Share marked as read"})
+	})
+
+	// Get unread share count
+	api.GET("/user-shares/unread-count", func(c *gin.Context) {
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		userModel, ok := user.(*models.User)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Invalid user data"})
+			return
+		}
+
+		count, err := fileShareService.GetUnreadShareCount(userModel.ID)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, gin.H{"count": count})
+	})
+
+	// Delete user file share
+	api.DELETE("/user-shares/:id", func(c *gin.Context) {
+		shareID := c.Param("id")
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		userModel, ok := user.(*models.User)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Invalid user data"})
+			return
+		}
+
+		shareUUID, err := uuid.Parse(shareID)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Invalid share ID"})
+			return
+		}
+
+		err = fileShareService.DeleteUserFileShare(shareUUID, userModel.ID)
+		if err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, gin.H{"message": "Share deleted"})
+	})
+
+	// Get all users for sharing
+	api.GET("/users", func(c *gin.Context) {
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		userModel, ok := user.(*models.User)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Invalid user data"})
+			return
+		}
+
+		// Get all users except current user
+		users, err := userRepo.GetAllUsers(100, 0)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Filter out current user
+		var otherUsers []*models.User
+		for _, u := range users {
+			if u.ID != userModel.ID {
+				otherUsers = append(otherUsers, u)
+			}
+		}
+
+		c.JSON(200, gin.H{"users": otherUsers})
+	})
+
+	// Public file sharing endpoint with proper headers
+	r.GET("/public/:id", func(c *gin.Context) {
+		fileID := c.Param("id")
+
+		// Parse UUID
+		parsedID, err := uuid.Parse(fileID)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Invalid file ID format"})
+			return
+		}
+
+		// Get file from database
+		file, err := fileRepo.GetByID(parsedID)
+		if err != nil {
+			c.JSON(404, gin.H{"error": "File not found"})
+			return
+		}
+
+		// Set CORS headers for public access
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type")
+
+		// Check if file has S3 key (new files) or use filename (legacy files)
+		s3Key := file.S3Key
+		if s3Key == "" {
+			// Legacy file without S3 key, try local file
+			localFilePath := filepath.Join(cfg.UploadPath, file.Filename)
+			if _, err := os.Stat(localFilePath); err == nil {
+				// Set headers for download with original filename
+				c.Header("Content-Type", file.MimeType)
+				c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.OriginalName))
+				c.Header("Content-Length", fmt.Sprintf("%d", file.Size))
+				c.Header("Cache-Control", "public, max-age=3600") // Cache for 1 hour
+				c.File(localFilePath)
+				return
+			} else {
+				c.JSON(404, gin.H{"error": "File not found on storage"})
+				return
+			}
+		}
+
+		// Download file from S3 and serve it with proper headers
+		result, err := s3Service.GetClient().GetObject(c.Request.Context(), &s3.GetObjectInput{
+			Bucket: aws.String(cfg.S3BucketName),
+			Key:    aws.String(s3Key),
+		})
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to download file from S3"})
+			return
+		}
+		defer result.Body.Close()
+
+		// Set appropriate headers for download with original filename
+		c.Header("Content-Type", file.MimeType)
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.OriginalName))
+		c.Header("Content-Length", fmt.Sprintf("%d", file.Size))
+		c.Header("Cache-Control", "public, max-age=3600") // Cache for 1 hour
+
+		// Stream the file content
+		io.Copy(c.Writer, result.Body)
+	})
+
+	// Download shared file endpoint
+	r.GET("/api/user-shares/:id/download", authMiddleware, func(c *gin.Context) {
+		shareID := c.Param("id")
+
+		// Parse UUID
+		parsedID, err := uuid.Parse(shareID)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Invalid share ID format"})
+			return
+		}
+
+		// Get user from context
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(401, gin.H{"error": "User not authenticated"})
+			return
+		}
+		userObj := user.(*models.User)
+
+		// Get share from database
+		share, err := userFileShareRepo.GetByID(parsedID)
+		if err != nil {
+			c.JSON(404, gin.H{"error": "Share not found"})
+			return
+		}
+
+		// Check if user is the recipient
+		if share.ToUserID != userObj.ID {
+			c.JSON(403, gin.H{"error": "Access denied"})
+			return
+		}
+
+		// Get file from database
+		file, err := fileRepo.GetByID(share.FileID)
+		if err != nil {
+			c.JSON(404, gin.H{"error": "File not found"})
+			return
+		}
+
+		// Check if file has S3 key (new files) or use filename (legacy files)
+		s3Key := file.S3Key
+		if s3Key == "" {
+			// Legacy file without S3 key, try local file
+			localFilePath := filepath.Join(cfg.UploadPath, file.Filename)
+			if _, err := os.Stat(localFilePath); err == nil {
+				// Set headers for download with original filename
+				c.Header("Content-Type", file.MimeType)
+				c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.OriginalName))
+				c.Header("Content-Length", fmt.Sprintf("%d", file.Size))
+				c.File(localFilePath)
+				return
+			} else {
+				c.JSON(404, gin.H{"error": "File not found on storage"})
+				return
+			}
+		}
+
+		// Download file from S3 and serve it with proper headers
+		result, err := s3Service.GetClient().GetObject(c.Request.Context(), &s3.GetObjectInput{
+			Bucket: aws.String(cfg.S3BucketName),
+			Key:    aws.String(s3Key),
+		})
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to download file from S3"})
+			return
+		}
+		defer result.Body.Close()
+
+		// Set appropriate headers for download with original filename
+		c.Header("Content-Type", file.MimeType)
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.OriginalName))
+		c.Header("Content-Length", fmt.Sprintf("%d", file.Size))
+
+		// Stream the file content
+		io.Copy(c.Writer, result.Body)
+	})
 
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {

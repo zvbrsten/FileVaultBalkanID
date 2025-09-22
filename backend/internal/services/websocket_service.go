@@ -51,6 +51,13 @@ func (s *WebSocketService) BroadcastFileDeleted(userID, fileID, fileName string)
 	log.Printf("Broadcasted file deleted: UserID=%s, FileID=%s, FileName=%s", userID, fileID, fileName)
 }
 
+// BroadcastFileSharedWithUser broadcasts file shared notification to user
+func (s *WebSocketService) BroadcastFileSharedWithUser(userID, fromUsername, fileName, shareID string) {
+	message := websocket.NewFileSharedWithUserMessage(fromUsername, fileName, shareID)
+	s.hub.BroadcastToUser(userID, message)
+	log.Printf("Broadcasted file shared: UserID=%s, From=%s, FileName=%s, ShareID=%s", userID, fromUsername, fileName, shareID)
+}
+
 // BroadcastFileShared broadcasts file sharing to user
 func (s *WebSocketService) BroadcastFileShared(userID, fileID, fileName, shareID, shareURL, expiresAt string) {
 	message := websocket.NewFileSharedMessage(fileID, fileName, shareID, shareURL, expiresAt)

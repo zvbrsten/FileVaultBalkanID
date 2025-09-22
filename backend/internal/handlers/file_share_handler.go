@@ -3,10 +3,13 @@ package handlers
 import (
 	"io"
 	"net/http"
+	"time"
 
+	"filevault/internal/models"
 	"filevault/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // FileShareHandler handles file sharing HTTP endpoints
@@ -85,10 +88,66 @@ func (h *FileShareHandler) GetSharedFileInfo(c *gin.Context) {
 	})
 }
 
-// CreateFileShare creates a new file share (GraphQL endpoint)
+// CreateFileShare creates a new file share
 func (h *FileShareHandler) CreateFileShare(c *gin.Context) {
-	// This will be handled by GraphQL resolver
-	c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Use GraphQL endpoint for creating file shares"})
+	// Get user from context (set by auth middleware)
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	userModel, ok := user.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user data"})
+		return
+	}
+
+	var req struct {
+		FileID       string  `json:"fileId" binding:"required"`
+		ExpiresAt    *string `json:"expiresAt"`
+		MaxDownloads *int    `json:"maxDownloads"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	fileID, err := uuid.Parse(req.FileID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file ID"})
+		return
+	}
+
+	// Create the share request
+	shareReq := &models.CreateFileShareRequest{
+		FileID: fileID,
+	}
+
+	// Parse expiration date if provided
+	if req.ExpiresAt != nil && *req.ExpiresAt != "" {
+		expiresAt, err := time.Parse(time.RFC3339, *req.ExpiresAt)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expiration date format"})
+			return
+		}
+		shareReq.ExpiresAt = &expiresAt
+	}
+
+	// Set max downloads if provided
+	if req.MaxDownloads != nil {
+		shareReq.MaxDownloads = req.MaxDownloads
+	}
+
+	// Create public share
+	share, err := h.fileShareService.CreateFileShare(userModel.ID, shareReq)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"share": share})
 }
 
 // UpdateFileShare updates a file share (GraphQL endpoint)
@@ -110,7 +169,7 @@ func (h *FileShareHandler) GetFileShareStats(c *gin.Context) {
 }
 
 // RegisterFileShareRoutes registers file sharing routes
-func RegisterFileShareRoutes(router *gin.Engine, fileShareService *services.FileShareService) {
+func RegisterFileShareRoutes(router *gin.Engine, fileShareService *services.FileShareService, authMiddleware gin.HandlerFunc) {
 	handler := NewFileShareHandler(fileShareService)
 
 	// Public routes (no authentication required)
@@ -120,8 +179,9 @@ func RegisterFileShareRoutes(router *gin.Engine, fileShareService *services.File
 		public.GET("/share/:token/info", handler.GetSharedFileInfo)
 	}
 
-	// Protected routes (authentication required) - handled by GraphQL
+	// Protected routes (authentication required)
 	protected := router.Group("/api/shares")
+	protected.Use(authMiddleware)
 	{
 		protected.POST("/", handler.CreateFileShare)
 		protected.PUT("/:id", handler.UpdateFileShare)

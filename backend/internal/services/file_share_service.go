@@ -18,18 +18,22 @@ import (
 
 // FileShareService handles file sharing business logic
 type FileShareService struct {
-	fileShareRepo    *repositories.FileShareRepository
-	fileRepo         repositories.FileRepositoryInterface
-	s3Client         *s3.Client
-	bucketName       string
-	baseURL          string
-	websocketService *WebSocketService
+	fileShareRepo     *repositories.FileShareRepository
+	userFileShareRepo *repositories.UserFileShareRepository
+	fileRepo          repositories.FileRepositoryInterface
+	userRepo          *repositories.UserRepository
+	s3Client          *s3.Client
+	bucketName        string
+	baseURL           string
+	websocketService  *WebSocketService
 }
 
 // NewFileShareService creates a new file share service
 func NewFileShareService(
 	fileShareRepo *repositories.FileShareRepository,
+	userFileShareRepo *repositories.UserFileShareRepository,
 	fileRepo repositories.FileRepositoryInterface,
+	userRepo *repositories.UserRepository,
 	awsRegion, awsAccessKey, awsSecretKey, bucketName, baseURL string,
 	websocketService *WebSocketService,
 ) (*FileShareService, error) {
@@ -51,12 +55,14 @@ func NewFileShareService(
 	fmt.Printf("DEBUG: S3 client created successfully\n")
 
 	service := &FileShareService{
-		fileShareRepo:    fileShareRepo,
-		fileRepo:         fileRepo,
-		s3Client:         s3Client,
-		bucketName:       bucketName,
-		baseURL:          baseURL,
-		websocketService: websocketService,
+		fileShareRepo:     fileShareRepo,
+		userFileShareRepo: userFileShareRepo,
+		fileRepo:          fileRepo,
+		userRepo:          userRepo,
+		s3Client:          s3Client,
+		bucketName:        bucketName,
+		baseURL:           baseURL,
+		websocketService:  websocketService,
 	}
 
 	fmt.Printf("DEBUG: FileShareService created successfully\n")
@@ -401,4 +407,180 @@ func (s *FileShareService) GetFileShareStats(userID uuid.UUID, shareID uuid.UUID
 	}
 
 	return stats, nil
+}
+
+// User File Sharing Methods
+
+// ShareFileWithUser shares a file directly with another user
+func (s *FileShareService) ShareFileWithUser(fromUserID, fileID, toUserID uuid.UUID, message *string) (*models.UserFileShareResponse, error) {
+	// Check if file exists and belongs to the user
+	file, err := s.fileRepo.GetByID(fileID)
+	if err != nil {
+		return nil, fmt.Errorf("file not found: %w", err)
+	}
+
+	if file.UploaderID != fromUserID {
+		return nil, fmt.Errorf("access denied: you can only share your own files")
+	}
+
+	// Check if target user exists
+	_, err = s.userRepo.GetByID(toUserID)
+	if err != nil {
+		return nil, fmt.Errorf("target user not found: %w", err)
+	}
+
+	// Check if already shared
+	alreadyShared, err := s.userFileShareRepo.CheckIfAlreadyShared(fileID, toUserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing shares: %w", err)
+	}
+
+	if alreadyShared {
+		return nil, fmt.Errorf("file is already shared with this user")
+	}
+
+	// Get from user details
+	fromUser, err := s.userRepo.GetByID(fromUserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user details: %w", err)
+	}
+
+	// Create user file share
+	share := &models.UserFileShare{
+		ID:         uuid.New(),
+		FileID:     fileID,
+		FromUserID: fromUserID,
+		ToUserID:   toUserID,
+		Message:    message,
+		IsRead:     false,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	err = s.userFileShareRepo.Create(share)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user file share: %w", err)
+	}
+
+	// Broadcast notification to target user via WebSocket
+	if s.websocketService != nil {
+		s.websocketService.BroadcastFileSharedWithUser(
+			toUserID.String(),
+			fromUser.Username,
+			file.OriginalName,
+			share.ID.String(),
+		)
+	}
+
+	// Create response
+	response := &models.UserFileShareResponse{
+		ID:         share.ID,
+		FileID:     share.FileID,
+		FromUserID: share.FromUserID,
+		ToUserID:   share.ToUserID,
+		Message:    share.Message,
+		IsRead:     share.IsRead,
+		CreatedAt:  share.CreatedAt,
+		File:       file,
+		FromUser:   fromUser,
+	}
+
+	return response, nil
+}
+
+// GetIncomingShares retrieves files shared with the user
+func (s *FileShareService) GetIncomingShares(userID uuid.UUID, limit, offset int) ([]*models.UserFileShareResponse, error) {
+	shares, err := s.userFileShareRepo.GetIncomingShares(userID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get incoming shares: %w", err)
+	}
+
+	var responses []*models.UserFileShareResponse
+	for _, share := range shares {
+		response := &models.UserFileShareResponse{
+			ID:         share.ID,
+			FileID:     share.FileID,
+			FromUserID: share.FromUserID,
+			ToUserID:   share.ToUserID,
+			Message:    share.Message,
+			IsRead:     share.IsRead,
+			CreatedAt:  share.CreatedAt,
+			File:       share.File,
+			FromUser:   share.FromUser,
+		}
+		responses = append(responses, response)
+	}
+
+	return responses, nil
+}
+
+// GetOutgoingShares retrieves files shared by the user
+func (s *FileShareService) GetOutgoingShares(userID uuid.UUID, limit, offset int) ([]*models.UserFileShareResponse, error) {
+	shares, err := s.userFileShareRepo.GetOutgoingShares(userID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get outgoing shares: %w", err)
+	}
+
+	var responses []*models.UserFileShareResponse
+	for _, share := range shares {
+		response := &models.UserFileShareResponse{
+			ID:         share.ID,
+			FileID:     share.FileID,
+			FromUserID: share.FromUserID,
+			ToUserID:   share.ToUserID,
+			Message:    share.Message,
+			IsRead:     share.IsRead,
+			CreatedAt:  share.CreatedAt,
+			File:       share.File,
+			FromUser:   share.ToUser, // For outgoing shares, we show the recipient
+		}
+		responses = append(responses, response)
+	}
+
+	return responses, nil
+}
+
+// MarkShareAsRead marks a user file share as read
+func (s *FileShareService) MarkShareAsRead(shareID, userID uuid.UUID) error {
+	// Verify the share belongs to the user
+	share, err := s.userFileShareRepo.GetByID(shareID)
+	if err != nil {
+		return fmt.Errorf("share not found: %w", err)
+	}
+
+	if share.ToUserID != userID {
+		return fmt.Errorf("access denied: you can only mark your own shares as read")
+	}
+
+	err = s.userFileShareRepo.MarkAsRead(shareID)
+	if err != nil {
+		return fmt.Errorf("failed to mark share as read: %w", err)
+	}
+
+	return nil
+}
+
+// GetUnreadShareCount returns the number of unread shares for a user
+func (s *FileShareService) GetUnreadShareCount(userID uuid.UUID) (int, error) {
+	return s.userFileShareRepo.GetUnreadCount(userID)
+}
+
+// DeleteUserFileShare deletes a user file share
+func (s *FileShareService) DeleteUserFileShare(shareID, userID uuid.UUID) error {
+	// Verify the share belongs to the user (either sender or recipient)
+	share, err := s.userFileShareRepo.GetByID(shareID)
+	if err != nil {
+		return fmt.Errorf("share not found: %w", err)
+	}
+
+	if share.FromUserID != userID && share.ToUserID != userID {
+		return fmt.Errorf("access denied: you can only delete your own shares")
+	}
+
+	err = s.userFileShareRepo.Delete(shareID)
+	if err != nil {
+		return fmt.Errorf("failed to delete share: %w", err)
+	}
+
+	return nil
 }

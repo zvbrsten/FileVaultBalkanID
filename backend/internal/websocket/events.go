@@ -14,6 +14,7 @@ const (
 	EventTypeFileUploadError     = "file_upload_error"
 	EventTypeFileDeleted         = "file_deleted"
 	EventTypeFileShared          = "file_shared"
+	EventTypeFileSharedWithUser  = "file_shared_with_user"
 	EventTypeShareDeleted        = "share_deleted"
 	EventTypeSystemStatsUpdate   = "system_stats_update"
 	EventTypeUserStatsUpdate     = "user_stats_update"
@@ -71,6 +72,14 @@ type FileSharedData struct {
 	ShareURL  string `json:"shareUrl"`
 	ExpiresAt string `json:"expiresAt,omitempty"`
 	Timestamp string `json:"timestamp"`
+}
+
+// FileSharedWithUserData represents file shared with user data
+type FileSharedWithUserData struct {
+	FromUsername string `json:"fromUsername"`
+	FileName     string `json:"fileName"`
+	ShareID      string `json:"shareId"`
+	Timestamp    string `json:"timestamp"`
 }
 
 // ShareDeletedData represents share deletion data
@@ -202,6 +211,19 @@ func NewFileSharedMessage(fileID, fileName, shareID, shareURL, expiresAt string)
 	}
 }
 
+// NewFileSharedWithUserMessage creates a file shared with user message
+func NewFileSharedWithUserMessage(fromUsername, fileName, shareID string) Message {
+	return Message{
+		Type: EventTypeFileSharedWithUser,
+		Data: FileSharedWithUserData{
+			FromUsername: fromUsername,
+			FileName:     fileName,
+			ShareID:      shareID,
+			Timestamp:    time.Now().Format(time.RFC3339),
+		},
+	}
+}
+
 // NewShareDeletedMessage creates a share deleted message
 func NewShareDeletedMessage(shareID, fileID, fileName string) Message {
 	return Message{
@@ -262,7 +284,3 @@ func NewConnectionStatusMessage(status string) Message {
 		},
 	}
 }
-
-
-
-

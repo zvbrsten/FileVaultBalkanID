@@ -16,6 +16,7 @@ type File {
   mimeType: String!
   size: Int!
   hash: String!
+  s3Key: String
   uploaderId: ID!
   folderId: ID
   uploader: User
