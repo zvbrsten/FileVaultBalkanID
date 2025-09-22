@@ -31,12 +31,12 @@ func (s *AuthService) RegisterUser(email, username, password string) (*models.Us
 	// Check if user already exists
 	existingUser, _ := s.userRepo.GetByEmail(email)
 	if existingUser != nil {
-		return nil, fmt.Errorf("user with email %s already exists", email)
+		return nil, fmt.Errorf("An account with this email already exists. Please use a different email or try logging in.")
 	}
 
 	existingUser, _ = s.userRepo.GetByUsername(username)
 	if existingUser != nil {
-		return nil, fmt.Errorf("user with username %s already exists", username)
+		return nil, fmt.Errorf("This username is already taken. Please choose a different username.")
 	}
 
 	// Create new user
@@ -53,7 +53,7 @@ func (s *AuthService) RegisterUser(email, username, password string) (*models.Us
 	// Save user to database
 	err := s.userRepo.Create(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user: %w", err)
+		return nil, fmt.Errorf("Failed to create account. Please try again.")
 	}
 
 	// Clear password from response
@@ -67,13 +67,13 @@ func (s *AuthService) LoginUser(email, password string) (string, *models.User, e
 	// Get user by email
 	user, err := s.userRepo.GetByEmail(email)
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid credentials")
+		return "", nil, fmt.Errorf("Invalid email or password. Please check your credentials and try again.")
 	}
 
 	// Verify password
 	err = s.userRepo.VerifyPassword(user, password)
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid credentials")
+		return "", nil, fmt.Errorf("Invalid email or password. Please check your credentials and try again.")
 	}
 
 	// Generate JWT token

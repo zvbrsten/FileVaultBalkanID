@@ -21,7 +21,8 @@ const LoginPage: React.FC = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      // Error messages are now properly formatted from the backend
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }

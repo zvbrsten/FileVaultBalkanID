@@ -44,12 +44,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { data: meData, loading: meLoading } = useQuery(GET_ME, {
     skip: !localStorage.getItem('token'),
     onError: async (error) => {
-      console.error('Authentication error:', error);
       // Clear cache and reset auth state on error
       try {
         await client.clearStore();
       } catch (clearError) {
-        console.error('Error clearing cache:', clearError);
+        // Silently handle cache clearing errors
       }
       localStorage.removeItem('token');
       setUser(null);
@@ -67,7 +66,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      client.clearStore().catch(console.error);
+      client.clearStore().catch(() => {});
     }
   }, [client]);
 
@@ -88,15 +87,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await client.refetchQueries({
           include: [GET_ME]
         });
-        
-        console.log('User logged in successfully:', data.loginUser.user.username);
-        console.log('Cache cleared and fresh data loaded');
       }
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (error: any) {
       // Clear cache on login error as well
-      await client.clearStore().catch(console.error);
-      throw error;
+      await client.clearStore().catch(() => {});
+      
+      // Extract error message from GraphQL error
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error?.graphQLErrors && error.graphQLErrors.length > 0) {
+        errorMessage = error.graphQLErrors[0].message;
+      } else if (error?.networkError) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
@@ -117,15 +124,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await client.refetchQueries({
           include: [GET_ME]
         });
-        
-        console.log('User registered successfully:', data.registerUser.user.username);
-        console.log('Cache cleared and fresh data loaded');
       }
-    } catch (error) {
-      console.error('Register error:', error);
+    } catch (error: any) {
       // Clear cache on registration error as well
-      await client.clearStore().catch(console.error);
-      throw error;
+      await client.clearStore().catch(() => {});
+      
+      // Extract error message from GraphQL error
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (error?.graphQLErrors && error.graphQLErrors.length > 0) {
+        errorMessage = error.graphQLErrors[0].message;
+      } else if (error?.networkError) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
@@ -139,10 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Clear the user state
       setUser(null);
-      
-      console.log('User logged out successfully and cache cleared');
     } catch (error) {
-      console.error('Error during logout:', error);
       // Even if cache clearing fails, still remove token and user
       localStorage.removeItem('token');
       setUser(null);

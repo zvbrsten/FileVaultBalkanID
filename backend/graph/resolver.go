@@ -206,17 +206,10 @@ func (r *Resolver) RegisterUser(ctx context.Context, email string, username stri
 
 // LoginUser authenticates a user
 func (r *Resolver) LoginUser(ctx context.Context, email string, password string) (*models.AuthPayload, error) {
-	fmt.Printf("=== LOGIN USER DEBUG START ===\n")
-	fmt.Printf("DEBUG: LoginUser called with email: %s\n", email)
-
 	token, user, err := r.AuthService.LoginUser(email, password)
 	if err != nil {
-		fmt.Printf("ERROR: LoginUser failed: %v\n", err)
 		return nil, err
 	}
-
-	fmt.Printf("SUCCESS: LoginUser successful, token: %s, user: %+v\n", token[:20]+"...", user)
-	fmt.Printf("=== LOGIN USER DEBUG END ===\n")
 
 	return &models.AuthPayload{
 		Token: token,

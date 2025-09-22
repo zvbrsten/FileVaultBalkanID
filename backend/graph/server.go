@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"filevault/internal/services"
 
@@ -40,19 +41,9 @@ type GraphQLResponse struct {
 
 // HandleGraphQL handles GraphQL requests
 func (s *SimpleGraphQLServer) HandleGraphQL(c *gin.Context) {
-	fmt.Println("DEBUG: HandleGraphQL called")
-
-	// Debug: Check if user is in context
-	if user, exists := c.Get("user"); exists {
-		fmt.Printf("DEBUG: User found in Gin context: %+v\n", user)
-	} else {
-		fmt.Println("DEBUG: No user found in Gin context")
-	}
-
 	// Handle JSON requests only (no file uploads)
 	var req GraphQLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("DEBUG: JSON binding error: %v\n", err)
 		c.JSON(http.StatusBadRequest, GraphQLResponse{
 			Errors: []string{"Invalid JSON: " + err.Error()},
 		})
@@ -67,19 +58,14 @@ func (s *SimpleGraphQLServer) HandleGraphQL(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("DEBUG: GraphQL Query: %s\n", req.Query)
-	fmt.Printf("DEBUG: Variables: %+v\n", req.Variables)
-
 	// Parse the query
 	doc, err := parser.ParseQuery(&ast.Source{Input: req.Query})
 	if err != nil {
-		fmt.Printf("DEBUG: Query parsing error: %v\n", err)
 		c.JSON(http.StatusBadRequest, GraphQLResponse{
 			Errors: []string{err.Error()},
 		})
 		return
 	}
-	fmt.Println("DEBUG: Query parsed successfully")
 
 	// Create context with user
 	ctx := c.Request.Context()
@@ -90,13 +76,21 @@ func (s *SimpleGraphQLServer) HandleGraphQL(c *gin.Context) {
 	// Execute the query
 	result, err := s.executeQuery(doc, req.Variables, c, ctx)
 	if err != nil {
-		fmt.Printf("DEBUG: Query execution error: %v\n", err)
-		c.JSON(http.StatusInternalServerError, GraphQLResponse{
+		// For authentication errors, return 200 with error in GraphQL response
+		// For other errors, return 500
+		statusCode := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "Invalid email or password") ||
+			strings.Contains(err.Error(), "already exists") ||
+			strings.Contains(err.Error(), "already taken") ||
+			strings.Contains(err.Error(), "Failed to create account") {
+			statusCode = http.StatusOK
+		}
+
+		c.JSON(statusCode, GraphQLResponse{
 			Errors: []string{err.Error()},
 		})
 		return
 	}
-	fmt.Printf("DEBUG: Query executed successfully, result: %+v\n", result)
 
 	c.JSON(http.StatusOK, GraphQLResponse{
 		Data: result,
@@ -107,13 +101,9 @@ func (s *SimpleGraphQLServer) HandleGraphQL(c *gin.Context) {
 func (s *SimpleGraphQLServer) executeQuery(doc *ast.QueryDocument, variables map[string]interface{}, c *gin.Context, ctx context.Context) (interface{}, error) {
 	result := make(map[string]interface{})
 
-	fmt.Printf("DEBUG: Document has %d operations\n", len(doc.Operations))
-	for i, op := range doc.Operations {
-		fmt.Printf("DEBUG: Operation %d: type=%s, name=%s\n", i, op.Operation, op.Name)
-		fmt.Printf("DEBUG: Processing operation type: %s\n", op.Operation)
+	for _, op := range doc.Operations {
 		switch op.Operation {
 		case ast.Query:
-			fmt.Printf("DEBUG: Executing query operation\n")
 			queryResult, err := s.executeQueryOperation(op, variables, c, ctx)
 			if err != nil {
 				return nil, err
@@ -122,7 +112,6 @@ func (s *SimpleGraphQLServer) executeQuery(doc *ast.QueryDocument, variables map
 				result[k] = v
 			}
 		case ast.Mutation:
-			fmt.Printf("DEBUG: Executing mutation operation\n")
 			mutationResult, err := s.executeMutationOperation(op, variables, c, ctx)
 			if err != nil {
 				return nil, err
@@ -327,7 +316,6 @@ func (s *SimpleGraphQLServer) executeMutationOperation(op *ast.OperationDefiniti
 
 	for _, sel := range op.SelectionSet {
 		if field, ok := sel.(*ast.Field); ok {
-			fmt.Printf("DEBUG: Processing mutation field: %s\n", field.Name)
 			switch field.Name {
 			case "registerUser":
 				if email, ok := variables["email"]; ok {
@@ -348,32 +336,22 @@ func (s *SimpleGraphQLServer) executeMutationOperation(op *ast.OperationDefiniti
 					}
 				}
 			case "loginUser":
-				fmt.Printf("DEBUG: Processing loginUser mutation\n")
 				if email, ok := variables["email"]; ok {
-					fmt.Printf("DEBUG: Email found in variables: %v\n", email)
 					if password, ok := variables["password"]; ok {
-						fmt.Printf("DEBUG: Password found in variables\n")
 						if emailStr, ok := email.(string); ok {
 							if passwordStr, ok := password.(string); ok {
-								fmt.Printf("DEBUG: Calling LoginUser resolver with email: %s\n", emailStr)
 								authPayload, err := s.resolver.LoginUser(ctx, emailStr, passwordStr)
 								if err != nil {
-									fmt.Printf("ERROR: LoginUser resolver failed: %v\n", err)
 									return nil, err
 								}
-								fmt.Printf("DEBUG: LoginUser resolver successful, setting result\n")
 								result["loginUser"] = authPayload
 							} else {
-								fmt.Printf("ERROR: Password is not a string: %T\n", password)
 							}
 						} else {
-							fmt.Printf("ERROR: Email is not a string: %T\n", email)
 						}
 					} else {
-						fmt.Printf("ERROR: Password not found in variables\n")
 					}
 				} else {
-					fmt.Printf("ERROR: Email not found in variables\n")
 				}
 			// uploadFile mutation removed - will be rebuilt later
 			case "deleteFile":

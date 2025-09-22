@@ -34,7 +34,8 @@ const SignupPage: React.FC = () => {
       await register(email, username, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      // Error messages are now properly formatted from the backend
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -146,7 +147,7 @@ const SignupPage: React.FC = () => {
             </div>
           </div>
 
-          <div>
+          <div className="space-y-3">
             <button
               type="submit"
               disabled={loading}
@@ -154,6 +155,16 @@ const SignupPage: React.FC = () => {
             >
               {loading ? 'Creating account...' : 'Create account'}
             </button>
+            
+            <div className="text-center">
+              <span className="text-sm text-gray-600">Already have an account? </span>
+              <Link
+                to="/login"
+                className="text-sm font-medium text-primary-600 hover:text-primary-500"
+              >
+                Sign in here
+              </Link>
+            </div>
           </div>
         </form>
       </div>
