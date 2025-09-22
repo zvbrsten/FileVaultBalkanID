@@ -49,14 +49,14 @@ const LoginPage: React.FC = () => {
         
         <div className="max-w-sm w-full space-y-6">
           <div>
-            <h2 className="mt-6 text-center text-2xl font-medium text-cream-800">
+            <h2 className="mt-6 text-center text-2xl font-medium text-white">
               Sign in to your account
             </h2>
-          <p className="mt-2 text-center text-sm text-cream-700">
+          <p className="mt-2 text-center text-sm text-gray-200">
             Or{' '}
             <Link
               to="/signup"
-              className="font-medium text-forest-green hover:text-forest-green-hover"
+              className="font-medium text-yellow-300 hover:text-yellow-200"
             >
               create a new account
             </Link>
