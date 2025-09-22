@@ -54,6 +54,7 @@ export const FILES_QUERY = gql`
       mimeType
       size
       hash
+      s3Key
       uploaderId
       folderId
       uploader {

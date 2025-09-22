@@ -7,6 +7,7 @@ import { FILES_QUERY } from '../api/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { formatBytes, formatDate } from '../lib/utils';
+import IncomingShares from '../components/SharedFiles/IncomingShares';
 
 const DashboardPageNew: React.FC = () => {
   const { user } = useAuth();
@@ -65,23 +66,24 @@ const DashboardPageNew: React.FC = () => {
             </h1>
           </motion.div>
 
-          {/* Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Three Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Recent Files Widget */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.1 }}
+              className="h-full"
             >
-              <Card className="bg-white border border-cream-200 shadow-sm">
+              <Card className="bg-white border border-cream-200 shadow-sm h-full flex flex-col">
                 <CardHeader>
                   <CardTitle className="text-cream-800 text-lg font-semibold">
                     Recent Files
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="flex-1 flex flex-col">
+                  <div className="space-y-3 flex-1">
                     {uniqueFiles.map((file: any, index: number) => (
                       <motion.div
                         key={file.id}
@@ -105,13 +107,25 @@ const DashboardPageNew: React.FC = () => {
                       </motion.div>
                     ))}
                     {uniqueFiles.length === 0 && (
-                      <p className="text-center text-cream-700 py-4">
-                        No files yet. Upload your first file!
-                      </p>
+                      <div className="flex-1 flex items-center justify-center">
+                        <p className="text-center text-cream-700 py-4">
+                          No files yet. Upload your first file!
+                        </p>
+                      </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
+            </motion.div>
+
+            {/* Shared with You Widget */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.15 }}
+              className="h-full"
+            >
+              <IncomingShares className="h-full" />
             </motion.div>
 
             {/* Options Widget */}
@@ -119,14 +133,15 @@ const DashboardPageNew: React.FC = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.2 }}
+              className="h-full"
             >
-              <Card className="bg-white border border-cream-200 shadow-sm">
+              <Card className="bg-white border border-cream-200 shadow-sm h-full flex flex-col">
                 <CardHeader>
                   <CardTitle className="text-cream-800 text-lg font-semibold">
                     Quick Actions
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1 flex flex-col justify-center">
                   <div className="space-y-3">
                     <Button
                       onClick={() => navigate('/upload')}

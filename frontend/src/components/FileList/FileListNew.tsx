@@ -3,6 +3,7 @@ import { Download, Trash2, File, FileText, Image, Video, Music, Archive } from '
 import { useQuery, useMutation } from '@apollo/client';
 import { FILES_QUERY, DELETE_FILE } from '../../api/queries';
 import FilePreview from '../FilePreview/FilePreview';
+import ShareModal from '../Share/ShareModal';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useNotification } from '../../hooks/useNotification';
@@ -17,6 +18,7 @@ interface FileItem {
   isDuplicate: boolean;
   uploaderId: string;
   folderId?: string;
+  s3Key?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -45,6 +47,8 @@ const FileList: React.FC<FileListProps> = ({
   const [deleteFileMutation] = useMutation(DELETE_FILE);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [shareFile, setShareFile] = useState<FileItem | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   // Filter out files that have a folderId and get unique files based on hash
   const files = React.useMemo(() => {
@@ -160,6 +164,11 @@ const FileList: React.FC<FileListProps> = ({
   const handlePreview = (file: FileItem) => {
     setPreviewFile(file);
     setIsPreviewOpen(true);
+  };
+
+  const handleShare = (file: FileItem) => {
+    setShareFile(file);
+    setIsShareOpen(true);
   };
 
 
@@ -281,9 +290,7 @@ const FileList: React.FC<FileListProps> = ({
             setPreviewFile(null);
           }}
           onDownload={downloadFile}
-          onShare={(file) => {
-            // Handle share functionality
-          }}
+          onShare={handleShare}
           onDelete={(fileId) => {
             deleteFile(fileId);
             setIsPreviewOpen(false);
@@ -295,6 +302,18 @@ const FileList: React.FC<FileListProps> = ({
             if (files[index]) {
               setPreviewFile(files[index]);
             }
+          }}
+        />
+      )}
+
+      {/* Share Modal */}
+      {shareFile && (
+        <ShareModal
+          file={shareFile}
+          isOpen={isShareOpen}
+          onClose={() => {
+            setIsShareOpen(false);
+            setShareFile(null);
           }}
         />
       )}

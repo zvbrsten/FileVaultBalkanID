@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Folder, File, Plus, Upload, HardDrive, BarChart3, Shield, Zap, ArrowRight, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import RotatingText from '../components/RotatingText';
+import IncomingShares from '../components/SharedFiles/IncomingShares';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -189,21 +190,26 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Folders Section */}
-        <div className="glass rounded-3xl p-8 hover-lift">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-foreground mb-2">Your Folders</h2>
-              <p className="text-muted-foreground">Organize your files with intelligent folders</p>
+        {/* Shared Files and Folders Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+          {/* Incoming Shares */}
+          <IncomingShares />
+          
+          {/* Folders Section */}
+          <div className="glass rounded-3xl p-8 hover-lift">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-foreground mb-2">Your Folders</h2>
+                <p className="text-muted-foreground">Organize your files with intelligent folders</p>
+              </div>
+              <button
+                onClick={() => navigate('/upload')}
+                className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-all duration-300 hover:scale-105 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Create Folder
+              </button>
             </div>
-            <button
-              onClick={() => navigate('/upload')}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-all duration-300 hover:scale-105 flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Create Folder
-            </button>
-          </div>
           
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -258,6 +264,7 @@ const DashboardPage: React.FC = () => {
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

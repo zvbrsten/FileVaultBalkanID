@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { Share2 } from 'lucide-react';
-import FileShareModal from './FileShareModal';
+import ShareModal from '../Share/ShareModal';
 
 interface ShareButtonProps {
   file: {
     id: string;
     filename: string;
     originalName: string;
-    size: number;
     mimeType: string;
+    size: number;
+    hash: string;
+    uploaderId: string;
+    folderId?: string;
     createdAt: string;
+    updatedAt: string;
   };
   className?: string;
 }
@@ -28,7 +32,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ file, className = '' }) => {
         <span>Share</span>
       </button>
 
-      <FileShareModal
+      <ShareModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         file={file}
