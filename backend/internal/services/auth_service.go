@@ -127,7 +127,7 @@ func (s *AuthService) ValidateToken(tokenString string) (*models.User, error) {
 		return nil, errors.New("invalid token claims")
 	}
 
-	// Extract user ID from claims
+	// Extract user data directly from JWT claims to avoid database query
 	userIDStr, ok := claims["user_id"].(string)
 	if !ok {
 		return nil, errors.New("invalid user ID in token")
@@ -138,14 +138,14 @@ func (s *AuthService) ValidateToken(tokenString string) (*models.User, error) {
 		return nil, fmt.Errorf("invalid user ID format: %w", err)
 	}
 
-	// Get user from database
-	user, err := s.userRepo.GetByID(userID)
-	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", err)
+	// Create user object from JWT claims instead of database query
+	user := &models.User{
+		ID:       userID,
+		Email:    claims["email"].(string),
+		Username: claims["username"].(string),
+		Role:     claims["role"].(string),
+		Password: "", // Never include password in response
 	}
-
-	// Clear password from response
-	user.Password = ""
 
 	return user, nil
 }

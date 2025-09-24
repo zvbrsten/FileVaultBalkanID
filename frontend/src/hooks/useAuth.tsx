@@ -72,9 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      // Clear any existing cache before login to prevent data leakage
-      await client.clearStore();
-      
+      // Skip cache clearing for faster login - just clear sensitive data
       const { data } = await loginMutation({
         variables: { email, password },
       });
@@ -83,14 +81,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.setItem('token', data.loginUser.token);
         setUser(data.loginUser.user);
         
-        // Refetch user data to ensure we have the latest information
-        await client.refetchQueries({
-          include: [GET_ME]
+        // Update cache directly instead of refetching
+        client.writeQuery({
+          query: GET_ME,
+          data: {
+            me: data.loginUser.user
+          }
         });
       }
     } catch (error: any) {
-      // Clear cache on login error as well
-      await client.clearStore().catch(() => {});
+      // Only clear cache on actual errors, not on every login attempt
+      if (error?.graphQLErrors?.some((e: any) => e.message.includes('Invalid'))) {
+        // Don't clear cache for invalid credentials
+      } else {
+        await client.clearStore().catch(() => {});
+      }
       
       // Extract error message from GraphQL error
       let errorMessage = 'Login failed. Please try again.';

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -16,6 +17,12 @@ func Connect(databaseURL string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+
+	// Configure connection pool for better performance
+	db.SetMaxOpenConns(25)                 // Maximum number of open connections
+	db.SetMaxIdleConns(5)                  // Maximum number of idle connections
+	db.SetConnMaxLifetime(5 * time.Minute) // Maximum connection lifetime
+	db.SetConnMaxIdleTime(1 * time.Minute) // Maximum idle time
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
@@ -63,6 +70,7 @@ func Migrate(databaseURL string) error {
 		"020_add_folder_file_count_triggers.sql",
 		"021_remove_is_duplicate_column.sql",
 		"022_add_user_file_sharing.sql",
+		"023_add_login_performance_indexes.sql",
 	}
 
 	for _, filename := range migrationFiles {

@@ -19,6 +19,7 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(email, password);
+      // Navigate immediately without waiting for additional operations
       navigate('/dashboard');
     } catch (err: any) {
       // Error messages are now properly formatted from the backend
